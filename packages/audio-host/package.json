@@ -1,0 +1,12 @@
+{
+  "name": "@ifakepro/audio-host",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Transport, instruments and mixer: note events become sound.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "scripts": { "typecheck": "tsc -b" },
+  "dependencies": { "@ifakepro/groove-engine": "*" }
+}

@@ -1,0 +1,25 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+.vite/
+
+# Test corpora: user-contributed transcriptions of copyrighted songs.
+# Fetched on demand with `npm run fixtures:fetch`. Never committed.
+fixtures/
+
+# Editor / vault config
+.obsidian/
+.idea/
+.vscode/
+
+# Screenshot output from `run shot`
+screenshot.png
+test-results/
+
+# Playwright MCP session output
+.playwright-mcp/
+
+# vite-plugin-pwa dev output
+dev-dist/

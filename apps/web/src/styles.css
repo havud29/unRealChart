@@ -1,0 +1,1544 @@
+/*
+ * iFakePro — laid out after the iReal Pro Mac app.
+ *
+ * Four columns: a source sidebar, a song list, the chart, and the player
+ * controls (or the Editor) on the right. The chart in the middle is a *page*:
+ * it is sized from the height of the stage and centred, so widening the window
+ * or hiding a panel gives it margin rather than wider bars. Every dimension
+ * inside the page is expressed in `--cell`, the one number `Chart.tsx`
+ * computes — see the note there.
+ */
+
+/*
+ * The palette. iReal Pro's bones, Claude's colour.
+ *
+ * Three inks do all the work and never compete, because each one means a
+ * different thing:
+ *
+ *   terracotta — the app talking: what is selected, what is on (Claude's)
+ *   yellow — the music moving: the bar that is sounding, right now
+ *   red    — the chart's own structure: sections, endings, repeats
+ *
+ * The first two are both warm, so lightness rather than hue separates them:
+ * the playhead is the brightest thing on the page, the accent never is.
+ *
+ * The chrome is warm grey rather than the neutral of a system window: a music
+ * stand and a manila folder, not a settings panel. The page is ivory, and the
+ * stage under it is darker than the paper in every theme, so the chart always
+ * reads as a sheet lying on something.
+ */
+:root {
+  --chrome: #e9e6e0;
+  --chrome-2: #e2ded6;
+  --surface: #f4f2ed;
+  --stage: #cbc5b9;
+  --ink: #23201c;
+  --ink-2: #756e62;
+  --rule: #d2ccc0;
+  /*
+   * Claude's accent: the terracotta from its UI, asked for directly -- the
+   * user wanted "the paper color like the default claude ui", then said the
+   * pink was still showing. That instruction outranks the iReal resemblance
+   * brief, so this is deliberate divergence, not drift: do not restore the
+   * magenta #b23a86 that was here before.
+   *
+   * Two tokens, because a colour that works as a fill rarely works as type:
+   * `--accent` fills (selected rows, the play button, active toggles, fader
+   * fills) and carries `--accent-ink` on top; `--accent-text` is the darker
+   * cousin for the places the accent is *type* on chrome -- the wordmark, the
+   * style name, the active sort header, focus rings.
+   *
+   * The fill sits a shade deeper than Claude's #d97757 so white can carry on
+   * it: white on #b0532f is 5.1:1, where white on #d97757 is only 3.1:1 and
+   * fails on the 12px song rows. #d97757 itself stays as `--accent-2` for
+   * hovers and secondary marks; #9a4526 as type on chrome is 5.2:1.
+   */
+  --accent: #b0532f;
+  --accent-2: #d97757;
+  --accent-ink: #ffffff;
+  --accent-text: #9a4526;
+  --danger: #a5341a;
+
+  /*
+   * The page.
+   *
+   * Claude's own paper: a warm off-white rather than a pure one, with a warm
+   * near-black for ink. A true #ffffff page glares under a long practice
+   * session and makes the surrounding chrome look grey by comparison; this
+   * sits a shade down and keeps the whole window in one temperature.
+   */
+  --paper: #faf9f5;
+  --paper-ink: #141413;
+  --paper-red: #c8352c;
+  --paper-blue: #1f6fd0;
+  --marker: #ffd84d;
+
+  --w-sources: 204px;
+  --w-list: 220px;
+  --w-panel: 248px;
+  --titlebar: 46px;
+
+  /* A little printed grain, so the page is paper rather than a white box. */
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.038'/%3E%3C/svg%3E");
+
+  --shadow-page: 0 1px 1px rgba(40, 33, 20, 0.16), 0 10px 26px -12px rgba(40, 33, 20, 0.42);
+  --ease: cubic-bezier(0.32, 0.72, 0.35, 1);
+
+  color-scheme: light;
+  font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+/* Dark, either by choice or by following the system. */
+.app.theme-dark,
+.app.theme-auto {
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  .app.theme-auto {
+    --chrome: #1c1e21;
+    --chrome-2: #17191c;
+    --surface: #212429;
+    --stage: #0b0c0d;
+    --ink: #e9e5dd;
+    --ink-2: #8e887d;
+    --rule: #2f3338;
+    /* Claude's orange carries dark ink on dark chrome: 5.8:1. */
+    --accent: #d97757;
+    --accent-2: #e8977a;
+    --accent-ink: #241009;
+    --accent-text: #e8977a;
+    --danger: #e08a5c;
+    --paper: #0d0d0e;
+    --paper-ink: #f2efe6;
+    --paper-red: #ff6a5e;
+    --shadow-page: 0 1px 1px rgba(0, 0, 0, 0.5), 0 12px 30px -12px rgba(0, 0, 0, 0.8);
+    color-scheme: dark;
+  }
+}
+
+.app.theme-dark {
+  --chrome: #1c1e21;
+  --chrome-2: #17191c;
+  --surface: #212429;
+  --stage: #0b0c0d;
+  --ink: #e9e5dd;
+  --ink-2: #8e887d;
+  --rule: #2f3338;
+  --accent: #d97757;
+  --accent-2: #e8977a;
+  --accent-ink: #241009;
+  --accent-text: #e8977a;
+  --danger: #e08a5c;
+  --paper: #0d0d0e;
+  --paper-ink: #f2efe6;
+  --paper-red: #ff6a5e;
+  --shadow-page: 0 1px 1px rgba(0, 0, 0, 0.5), 0 12px 30px -12px rgba(0, 0, 0, 0.8);
+  color-scheme: dark;
+}
+
+/*
+ * Paper. Three treatments are visible across the Mac screenshots — white,
+ * cream, black — and they colour the page only, never the app around it.
+ */
+.app.song-cream { --paper: #f2e8d5; --paper-ink: #241e16; }
+.app.song-black { --paper: #08080a; --paper-ink: #f4f4f2; --paper-red: #ff6a5e; }
+
+.app.marker-red { --marker: #ff5a52; }
+.app.marker-green { --marker: #5ad07a; }
+
+/* Rehearsal marks are red only when the setting is on, as in iReal Pro. */
+.app:not(.marks-hot) { --paper-red: var(--paper-ink); }
+
+* { box-sizing: border-box; }
+
+/* Thin, dim, and out of the way until you are actually scrolling. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--ink) 22%, transparent) transparent;
+}
+*::-webkit-scrollbar { width: 9px; height: 9px; }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--ink) 20%, transparent);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover { background: color-mix(in srgb, var(--ink) 34%, transparent); background-clip: content-box; }
+
+:where(button, input, select, label.tb-btn, label.group-add):focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 1px;
+  border-radius: 5px;
+}
+
+/* Motion is decoration here; anyone who has asked for less gets none. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--chrome);
+  color: var(--ink);
+  overflow: hidden;
+}
+
+button, input, select { font: inherit; }
+
+.app {
+  display: grid;
+  grid-template-rows: var(--titlebar) minmax(0, 1fr);
+  height: 100vh;
+  background: var(--chrome);
+  color: var(--ink);
+}
+.app.dragging { outline: 3px dashed var(--accent); outline-offset: -6px; }
+
+/* ---------- title bar ---------- */
+
+.titlebar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  padding: 0 12px;
+  background: linear-gradient(
+    var(--chrome),
+    color-mix(in srgb, var(--chrome) 92%, var(--ink))
+  );
+  border-bottom: 1px solid var(--rule);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 4%, transparent);
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* The wordmark. Small, set once, and never explained. */
+.wordmark {
+  margin-left: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.wordmark b { font-weight: 600; color: var(--ink); }
+.wordmark i {
+  font-style: normal;
+  color: var(--accent-text);
+}
+.tb-group { display: flex; align-items: center; gap: 4px; }
+.tb-right { justify-self: end; }
+.tb-title {
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40vw;
+}
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  position: relative;
+  transition: background-color 140ms var(--ease), color 140ms var(--ease);
+}
+.tb-btn:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+.tb-btn:active { transform: translateY(0.5px); }
+.tb-btn.on { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent-text); }
+.tb-btn:disabled { opacity: 0.35; cursor: default; }
+.tb-btn input[type="file"] { display: none; }
+.tb-btn.aa { width: 32px; font-size: 13px; }
+
+/* Icons, drawn rather than fetched: five shapes is not worth a font. */
+.icon-sidebar,
+.icon-panel,
+.icon-pencil,
+.icon-import,
+.icon-share,
+.icon-play,
+.icon-pause,
+.icon-stop { display: inline-block; }
+
+.icon-sidebar,
+.icon-panel {
+  width: 15px; height: 12px;
+  border: 1.5px solid currentColor;
+  border-radius: 2.5px;
+  position: relative;
+}
+.icon-sidebar::before,
+.icon-panel::before {
+  content: "";
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 4px;
+  background: currentColor;
+}
+.icon-sidebar::before { left: 0; border-radius: 1px 0 0 1px; }
+.icon-panel::before { right: 0; border-radius: 0 1px 1px 0; }
+
+.icon-pencil {
+  width: 13px; height: 13px;
+  background: currentColor;
+  clip-path: polygon(0 100%, 22% 78%, 78% 22%, 100% 0, 78% 0, 0 78%);
+}
+/* Import: a tray with an arrow coming down into it. */
+.icon-import {
+  width: 13px; height: 13px;
+  border: 1.5px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 2px 2px;
+  position: relative;
+}
+.icon-import::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -7px;
+  width: 1.5px;
+  height: 7px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+.icon-import::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.icon-share {
+  width: 12px; height: 14px;
+  border: 1.5px solid currentColor;
+  border-top: 0;
+  border-radius: 0 0 2px 2px;
+  position: relative;
+}
+.icon-share::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: -6px;
+  width: 1.5px; height: 9px;
+  background: currentColor;
+  transform: translateX(-50%);
+}
+.icon-share::after {
+  content: "";
+  position: absolute;
+  left: 50%; top: -6px;
+  width: 6px; height: 6px;
+  border-left: 1.5px solid currentColor;
+  border-top: 1.5px solid currentColor;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.icon-play {
+  width: 0; height: 0;
+  border-left: 15px solid currentColor;
+  border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
+.icon-pause {
+  width: 13px; height: 17px;
+  background: currentColor;
+  clip-path: polygon(0 0, 35% 0, 35% 100%, 0 100%, 0 0, 65% 0, 100% 0, 100% 100%, 65% 100%, 65% 0);
+}
+.icon-stop { width: 13px; height: 13px; background: currentColor; border-radius: 1.5px; }
+
+/* ---------- panes ---------- */
+
+.panes {
+  display: grid;
+  grid-template-columns: var(--w-sources) var(--w-list) minmax(0, 1fr) var(--w-panel);
+  min-height: 0;
+}
+.panes.no-sources { grid-template-columns: var(--w-list) minmax(0, 1fr) var(--w-panel); }
+.panes.no-panel { grid-template-columns: var(--w-sources) var(--w-list) minmax(0, 1fr); }
+.panes.no-sources.no-panel { grid-template-columns: var(--w-list) minmax(0, 1fr); }
+
+/* ---------- sources sidebar ---------- */
+
+.sources {
+  background: var(--chrome-2);
+  border-right: 1px solid var(--rule);
+  padding: 10px 8px;
+  overflow-y: auto;
+  min-height: 0;
+}
+.search {
+  width: 100%;
+  padding: 5px 9px;
+  margin-bottom: 12px;
+  font-size: 12.5px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+.search:focus-visible { outline: 2px solid var(--accent-text); outline-offset: 1px; }
+
+.group {
+  display: flex;
+  align-items: center;
+  margin: 12px 0 4px;
+  padding: 0 6px;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-2);
+}
+.group-add {
+  margin-left: auto;
+  cursor: pointer;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+.group-add:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.group-add input { display: none; }
+
+.src {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 4px 7px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font-size: 12.5px;
+  transition: background-color 130ms var(--ease);
+}
+.src:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.src.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 1px 5px -2px color-mix(in srgb, var(--accent) 80%, transparent);
+}
+.src-icon { width: 13px; text-align: center; opacity: 0.75; font-size: 11px; }
+.src-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.src-count { font-size: 11px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.src.active .src-count { color: color-mix(in srgb, var(--accent-ink) 80%, transparent); }
+.src-empty {
+  margin: 6px 7px;
+  padding: 9px 10px;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  line-height: 1.45;
+  border: 1px dashed var(--rule);
+  border-radius: 7px;
+}
+.src-foot {
+  width: 100%;
+  margin-top: 14px;
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-2);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.src-foot:hover { border-color: var(--danger); color: var(--danger); }
+.error { margin: 10px 7px 0; font-size: 11.5px; color: var(--danger); }
+
+/* ---------- song list ---------- */
+
+.songlist {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--rule);
+}
+.sl-head {
+  padding: 9px 12px 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.sl-sort {
+  display: flex;
+  gap: 2px;
+  padding: 0 8px 6px;
+  border-bottom: 1px solid var(--rule);
+}
+.sl-sort button {
+  flex: 1;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ink-2);
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sl-sort button:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); }
+.sl-sort button.on { color: var(--accent-text); font-weight: 700; }
+
+.sl-rows { flex: 1; margin: 0; padding: 0; list-style: none; overflow-y: auto; min-height: 0; }
+.sl-rows button {
+  display: block;
+  width: 100%;
+  padding: 6px 12px 7px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--rule) 60%, transparent);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  position: relative;
+  transition: background-color 130ms var(--ease);
+}
+.sl-rows button:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.sl-rows button.active { background: var(--accent); color: var(--accent-ink); }
+/* A marker down the edge of the selected row, the way a set list gets a tab. */
+.sl-rows button.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--paper);
+}
+.sl-title {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: -0.008em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sl-composer {
+  display: block;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sl-meta {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 10.5px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.sl-style { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl-key {
+  padding: 0 4px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 9%, transparent);
+}
+.sl-rows button.active .sl-meta { color: color-mix(in srgb, var(--accent-ink) 78%, transparent); }
+.sl-rows button.active .sl-key {
+  background: color-mix(in srgb, var(--accent-ink) 22%, transparent);
+}
+
+/* ---------- stage: the page and nothing else ---------- */
+
+.stage {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--stage);
+}
+.stage-page { flex: 1; min-height: 0; display: flex; }
+.empty {
+  margin: auto;
+  padding: 24px;
+  text-align: center;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.6;
+  max-width: 22rem;
+}
+.empty strong { display: block; font-size: 15px; color: var(--ink); margin-bottom: 4px; }
+
+.chart-fit,
+.editor {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* The side padding is not decoration: it guarantees the page always has
+     stage around it, so it reads as a sheet on a desk rather than a panel
+     that has been stretched to the window. */
+  padding: 10px 26px;
+  overflow: auto;
+}
+
+.page {
+  /* 16 cells across plus a cell's worth of margin, and a fixed height: the
+     sheet keeps one shape whether the song is twelve bars or ninety-six, and
+     the surplus width becomes stage. */
+  width: calc(var(--cell) * 17.2);
+  min-height: var(--sheet);
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  padding: calc(var(--cell) * 0.35) calc(var(--cell) * 0.6);
+  /* Grain over the paper colour, as a background rather than an overlay, so it
+     never sits between the reader and a chord. */
+  background: var(--grain), var(--paper);
+  color: var(--paper-ink);
+  border: 1px solid color-mix(in srgb, var(--paper-ink) 14%, transparent);
+  border-radius: 1px;
+  box-shadow: var(--shadow-page);
+  animation: page-in 260ms var(--ease);
+}
+
+/* A new chart arrives rather than blinking into place. */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(4px) scale(0.994); }
+  to { opacity: 1; transform: none; }
+}
+
+.page-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: baseline;
+  height: calc(var(--cell) * 1.67);
+  font-family: -apple-system, system-ui, "Segoe UI", sans-serif;
+}
+.page-title {
+  margin: 0;
+  font-size: calc(var(--cell) * 0.6);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-align: center;
+  white-space: nowrap;
+}
+.page-style { font-size: calc(var(--cell) * 0.42); }
+.page-composer { font-size: calc(var(--cell) * 0.42); text-align: right; }
+
+.row {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  height: var(--system);
+}
+
+.bar {
+  position: relative;
+  padding: calc(var(--cell) * 0.62) calc(var(--cell) * 0.1) 0 calc(var(--cell) * 0.18);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+/* Barlines sit on the bar's edges and never consume a cell. */
+.bar::before,
+.bar::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--cell) * 0.5);
+  bottom: calc(var(--cell) * 0.16);
+  width: 0;
+}
+.bar::before { left: 0; }
+.bar::after { right: 0; }
+
+.bar.open-single::before,
+.bar.system-start::before { border-left: 1px solid currentColor; }
+.bar.open-double::before { border-left: 3px double currentColor; }
+.bar.open-repeat::before {
+  border-left: 3px double var(--paper-red);
+  box-shadow:
+    calc(var(--cell) * 0.16) calc(var(--cell) * -0.18) 0 calc(var(--cell) * -0.08) var(--paper-red),
+    calc(var(--cell) * 0.16) calc(var(--cell) * 0.18) 0 calc(var(--cell) * -0.08) var(--paper-red);
+}
+.bar.close-single::after { border-right: 1px solid currentColor; }
+.bar.close-double::after { border-right: 3px double currentColor; }
+.bar.close-final::after { border-right: 4px double currentColor; }
+.bar.close-repeat::after {
+  border-right: 3px double var(--paper-red);
+  box-shadow:
+    calc(var(--cell) * -0.16) calc(var(--cell) * -0.18) 0 calc(var(--cell) * -0.08) var(--paper-red),
+    calc(var(--cell) * -0.16) calc(var(--cell) * 0.18) 0 calc(var(--cell) * -0.08) var(--paper-red);
+}
+
+/* The ending bracket, drawn in red the way iReal Pro draws it. */
+/*
+ * An ending is a short bracket at the bar it opens on -- a tick down, a line
+ * across that bar -- and the number beside it.
+ *
+ * Not a rule over every bar it covers: an ending that runs four bars across two
+ * systems then draws a full-width line through the middle of the page, twice,
+ * which reads as a strikethrough rather than as structure. iReal Pro draws the
+ * short form, and it is legible because the bracket marks where the ending
+ * *starts*; the repeat sign already says where it ends.
+ */
+.bar.ending-start { box-shadow: inset 0 1.5px 0 -0.5px var(--paper-red); }
+/* The tick hangs off the number, not off the bar: `.bar::before` is already
+   the opening barline and cannot be spent on this. */
+.ending::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--cell) * -0.1);
+  top: calc(var(--cell) * -0.02);
+  height: calc(var(--cell) * 0.28);
+  border-left: 1.5px solid var(--paper-red);
+}
+.ending { position: relative; }
+
+.chords {
+  display: flex;
+  align-items: baseline;
+  gap: calc(var(--cell) * 0.06);
+  min-width: 0;
+}
+.chord {
+  position: relative;
+  font-size: calc(var(--cell) * 0.95);
+  /* Not bold. At chart size a regular weight is easier to read across a room
+     than a heavy one, which fills its own counters in. */
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+  flex-basis: 0;
+  min-width: 0;
+}
+/* The one size that does change, because the chart asked for it. */
+.chord.small { font-size: calc(var(--cell) * 0.7); }
+
+/*
+ * A chord symbol is three sizes and two rows.
+ *
+ * The root sits at full size with its accidental raised beside it, and a tail
+ * to the right carries the quality with the bass note stacked underneath. Every
+ * part of the tail is one size -- 0.62em -- so a quality, an extension and a
+ * bass note all read as the same order of information, which is the thing that
+ * makes a page of chords look even rather than ransom-note.
+ */
+.c-root { font-size: 1em; }
+.c-acc { font-size: 0.6em; vertical-align: 0.44em; margin-left: 0.01em; }
+
+.c-tail {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  /* Hangs from the root's baseline rather than sitting on it. */
+  vertical-align: -0.16em;
+  font-size: 0.62em;
+  line-height: 1.02;
+  margin-left: 0.04em;
+}
+.c-qual:empty { display: none; }
+/* The bass runs under the quality, never after it: inline, a bar of slash
+   chords is twice the width of the bar it has to fit inside. */
+.c-bass { letter-spacing: -0.01em; }
+
+/* A six-nine chord is a fraction, not the number sixty-nine. */
+.c-sixnine {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.82;
+  font-size: 0.86em;
+  vertical-align: -0.06em;
+  margin-left: 0.04em;
+}
+.c-sixnine > span + span {
+  border-top: 1px solid currentColor;
+  padding-top: 0.04em;
+}
+.alternate {
+  position: absolute;
+  top: calc(var(--cell) * -0.52);
+  left: 0;
+  font-size: calc(var(--cell) * 0.42);
+  font-weight: 500;
+  opacity: 0.75;
+}
+.beats {
+  font-size: calc(var(--cell) * 0.28);
+  font-weight: 400;
+  opacity: 0.4;
+  margin-left: 2px;
+  vertical-align: super;
+}
+.fermata { margin-right: 2px; }
+
+/* The stacked time signature, drawn inside the first bar of a meter. */
+.meter {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: center;
+  line-height: 0.92;
+  font-weight: 700;
+  font-size: calc(var(--cell) * 0.62);
+  margin-right: calc(var(--cell) * 0.14);
+  align-self: center;
+  color: var(--paper-red);
+}
+
+.marks {
+  position: absolute;
+  top: calc(var(--cell) * -0.02);
+  left: calc(var(--cell) * 0.1);
+  display: flex;
+  align-items: center;
+  gap: calc(var(--cell) * 0.14);
+  font-size: calc(var(--cell) * 0.4);
+  color: var(--paper-red);
+  line-height: 1;
+}
+.section {
+  /* White on a solid red square, as the Mac app draws it. */
+  background: var(--paper-red);
+  color: var(--paper);
+  border-radius: 2px;
+  padding: 0 calc(var(--cell) * 0.11);
+  font-weight: 700;
+}
+.ending {
+  font-weight: 700;
+  font-size: calc(var(--cell) * 0.34);
+  line-height: 1;
+}
+.glyph.end { font-size: calc(var(--cell) * 0.32); letter-spacing: 0.06em; color: var(--paper-blue); }
+
+.comment {
+  position: absolute;
+  top: calc(var(--cell) * 0.02);
+  right: calc(var(--cell) * 0.14);
+  font-size: calc(var(--cell) * 0.36);
+  font-style: italic;
+  color: var(--paper-red);
+  white-space: nowrap;
+}
+
+/* Playback and selection */
+.bar.seekable { cursor: pointer; }
+.bar {
+  border-radius: 2px;
+  transition: background-color 110ms linear;
+}
+.bar.seekable:hover { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.bar.playing,
+.bar.seekable.playing:hover { background: color-mix(in srgb, var(--marker) 60%, transparent); }
+/* A loop is a bracket the eye can find without reading it. */
+.bar.looped { background: color-mix(in srgb, var(--accent) 13%, transparent); }
+.bar.looped.playing { background: color-mix(in srgb, var(--marker) 66%, transparent); }
+.bar.selected { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+
+/*
+ * The cue: where play will start.
+ *
+ * It is a promise about the future rather than a report of the present, so it
+ * is drawn as a mark at the bar's edge -- the way a musician puts a pencil
+ * tick before the bar they mean to start from -- and not as the filled
+ * highlight the sounding bar gets. The two never show at once: once playing,
+ * the playhead says where we are and the cue would only compete with it.
+ */
+/* A button that reads as a link, for an action inside a sentence. */
+.linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--accent-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.bar.cued { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* A real element, not ::before/::after -- both pseudo-elements on .bar are
+   already the opening and closing barlines. */
+.cue-mark {
+  position: absolute;
+  left: calc(var(--cell) * 0.07);
+  top: 14%;
+  bottom: 14%;
+  width: calc(var(--cell) * 0.1);
+  border-radius: calc(var(--cell) * 0.05);
+  background: var(--accent);
+  pointer-events: none;
+}
+
+/* ---------- the bottom bar (player controls minimized) ---------- */
+
+.bottombar {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 6px 18px;
+  background: var(--chrome);
+  border-top: 1px solid var(--rule);
+}
+.bb-style,
+.p-style {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+.bb-style:hover, .p-style:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.bb-style-name, .p-style-name {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--accent-text);
+}
+.p-style-name { font-size: 15.5px; }
+.bb-transport, .p-transport { display: flex; align-items: center; gap: 14px; }
+.bb-steppers, .p-steppers { display: flex; align-items: flex-start; gap: 18px; margin-left: auto; }
+.p-steppers { margin: 0; justify-content: space-around; width: 100%; }
+
+.t-play, .t-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: background-color 130ms var(--ease), transform 90ms var(--ease);
+}
+.t-stop { color: var(--ink-2); }
+.t-stop:hover { background: color-mix(in srgb, var(--ink) 8%, transparent); color: var(--ink); }
+
+/* Play is the one button you reach for mid-tune, so it is the one that looks
+   like a button rather than an icon. */
+.t-play {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 2px 8px -3px color-mix(in srgb, var(--accent) 90%, transparent);
+}
+.t-play:hover { background: var(--accent-2); }
+.t-play:active { transform: scale(0.94); }
+.t-play .icon-play { border-left-width: 13px; border-top-width: 8px; border-bottom-width: 8px; margin-left: 3px; }
+.t-play .icon-pause { width: 11px; height: 14px; }
+
+.t-time {
+  font-size: 12px;
+  color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+/* While the band plays, the clock keeps time visibly. */
+.app.is-playing .t-time { color: var(--ink); }
+.app.is-playing .t-time::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--marker);
+  vertical-align: 0.1em;
+  animation: pulse 1.6s var(--ease) infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.stepper { display: flex; flex-direction: column; align-items: center; }
+.stepper-row { display: flex; align-items: center; gap: 2px; }
+.stepper-value {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 21px;
+  font-weight: 350;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  padding: 0 3px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: color 130ms var(--ease), background-color 130ms var(--ease);
+}
+.stepper-value:not(:disabled):active { transform: translateY(0.5px); }
+.stepper-value:disabled { cursor: default; }
+.stepper-value:not(:disabled):hover { background: color-mix(in srgb, var(--ink) 8%, transparent); }
+.stepper-arrows { display: flex; flex-direction: column; }
+.stepper-arrows button {
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font-size: 9px;
+  line-height: 8px;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.stepper-arrows button:hover { color: var(--ink); }
+.stepper-caption {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-2);
+}
+.stepper-caption.centred { display: block; text-align: center; margin: 0 0 6px; }
+
+/* ---------- player controls panel ---------- */
+
+.panel {
+  background: var(--chrome);
+  border-left: 1px solid var(--rule);
+  overflow-y: auto;
+  min-height: 0;
+}
+.panel.hidden { display: none; }
+
+.player { padding: 12px 14px 24px; display: flex; flex-direction: column; gap: 10px; }
+.p-transport { justify-content: center; }
+.p-style { align-self: center; }
+
+.p-row { display: flex; align-items: center; gap: 4px; }
+.p-seg { justify-content: center; flex-wrap: wrap; }
+.p-seg-label, .p-inline-label { font-size: 11px; color: var(--ink-2); }
+.p-seg button, .p-inline button {
+  padding: 2px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.p-seg button.on, .p-inline button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.p-inline select {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 11.5px;
+}
+.p-hint { font-size: 11px; color: var(--ink-2); font-style: italic; }
+
+/*
+ * The mixer's faders. A default range control reads as a form field; these
+ * read as a strip you can push, which is what a musician is looking for when
+ * they want the piano out of the way.
+ */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: none;
+  cursor: pointer;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) 0 / var(--fill, 0%) 100% no-repeat,
+    color-mix(in srgb, var(--ink) 16%, transparent);
+}
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--accent), var(--accent)) 0 / var(--fill, 0%) 100% no-repeat,
+    color-mix(in srgb, var(--ink) 16%, transparent);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  box-shadow: 0 1px 3px -1px rgba(0, 0, 0, 0.35);
+  transition: border-color 120ms var(--ease), transform 90ms var(--ease);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  box-shadow: 0 1px 3px -1px rgba(0, 0, 0, 0.35);
+}
+input[type="range"]:hover::-webkit-slider-thumb { border-color: var(--accent); }
+input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.12); }
+input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
+
+.p-fader { display: flex; align-items: center; gap: 7px; }
+.p-fader input[type="range"] { flex: 1; min-width: 0; }
+.fader-icon { font-size: 12px; opacity: 0.7; }
+.part-name {
+  width: 76px;
+  flex: 0 0 auto;
+  font-size: 11.5px;
+  padding: 2px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.part-name {
+  transition: opacity 140ms var(--ease), color 140ms var(--ease);
+}
+/* A muted part is not disabled, it is silent — so it dims rather than greys. */
+.part-name.off { opacity: 0.4; text-decoration: line-through; }
+.p-master { margin-top: 4px; }
+
+.p-button {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.p-button:hover { border-color: var(--accent); color: var(--accent-text); }
+.p-button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+.p-check, .pop-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.p-slider-label { margin: 6px 0 0; font-size: 11px; color: var(--ink-2); }
+.p-slider { width: 100%; }
+.p-structure {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--ink-2);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- popovers ---------- */
+
+.scrim { position: fixed; inset: 0; z-index: 20; }
+.popover {
+  position: fixed;
+  top: calc(var(--titlebar) + 4px);
+  right: 12px;
+  z-index: 21;
+  width: 232px;
+  max-height: calc(100vh - var(--titlebar) - 24px);
+  overflow-y: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: 0 16px 40px -14px rgba(0, 0, 0, 0.5), 0 2px 6px -3px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: pop-in 140ms var(--ease);
+  transform-origin: top right;
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.pop-group {
+  margin: 6px 0 0;
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  color: var(--ink-2);
+}
+.pop-seg { display: flex; flex-wrap: wrap; gap: 4px; }
+.pop-seg button,
+.pop-share button,
+.pop-style button,
+.pop-key button {
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--chrome);
+  color: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+  text-align: left;
+}
+.pop-seg button.on,
+.pop-style button.on,
+.pop-key button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.pop-share button, .pop-style button { width: 100%; }
+.pop-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 210px; }
+.pop-key button { text-align: center; position: relative; padding: 6px 4px; }
+.pop-default {
+  display: block;
+  font-size: 8.5px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- diagrams ---------- */
+
+.diagram-dock {
+  border-top: 1px solid var(--rule);
+  background: var(--chrome);
+  padding: 8px 14px;
+}
+.diagrams { display: inline-flex; flex-direction: column; gap: 8px; }
+.diagram-head { display: flex; align-items: center; gap: 12px; }
+.chordname { font-size: 18px; font-weight: 700; min-width: 4.5rem; }
+.picker { display: flex; gap: 4px; }
+.picker button,
+.variant {
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.picker button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.diagram-empty { margin: 0; font-size: 12px; color: var(--ink-2); }
+
+.keyboard { width: 170px; height: 86px; }
+.key { stroke: var(--ink); stroke-width: 1; }
+.key.white { fill: #fff; }
+.key.black { fill: #222; }
+.key.on { fill: var(--accent); }
+.key.root { fill: var(--ink); }
+.key.black.on { fill: var(--accent); }
+
+.fretboard { width: 118px; height: 126px; }
+.fretboard .fret,
+.fretboard .string { stroke: var(--ink-2); stroke-width: 1; }
+.fretboard .nut { fill: var(--ink); }
+.fretboard .dot { fill: var(--accent); }
+.fretboard .open { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.fretboard .mute,
+.fretboard .position {
+  fill: var(--ink-2);
+  font-size: 11px;
+  font-family: inherit;
+  text-anchor: middle;
+}
+.fretboard .position { text-anchor: start; font-weight: 600; }
+
+/* ---------- editor ---------- */
+
+.editor-panel { padding: 10px 12px 24px; display: flex; flex-direction: column; gap: 10px; }
+.editor-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.editor-bar strong { width: 100%; font-size: 11px; color: var(--ink-2); }
+.editor-bar button {
+  padding: 3px 9px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.editor-bar button:disabled { opacity: 0.4; cursor: default; }
+.editor-bar button.save:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.spacer-flex { flex: 1 1 auto; }
+
+.chord-input {
+  width: 100%;
+  padding: 5px 9px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.editor-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--rule);
+}
+.tool { display: flex; align-items: center; flex-wrap: wrap; gap: 3px; }
+.tool .label {
+  width: 100%;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.tool button {
+  min-width: 26px;
+  padding: 2px 6px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.tool button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.tool select,
+.comment-input {
+  padding: 2px 5px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  color: inherit;
+  font-size: 11.5px;
+}
+.comment-input { flex: 1; min-width: 0; }
+
+.editor-warnings { margin: 4px 0 0; padding-left: 16px; font-size: 11px; color: var(--danger); }
+.editor-ok { margin: 4px 0 0; font-size: 11px; color: var(--ink-2); }
+
+/* The Editor's grid is a page too, showing the whole writable area. */
+.cellgrid {
+  width: calc(var(--cell) * 17);
+  flex: 0 0 auto;
+  padding: calc(var(--cell) * 0.5);
+  background: var(--paper);
+  color: var(--paper-ink);
+  border: 1px solid color-mix(in srgb, var(--paper-ink) 22%, transparent);
+  box-shadow: 0 1px 10px -4px rgba(0, 0, 0, 0.4);
+}
+.cellrow { display: grid; grid-template-columns: repeat(16, 1fr); height: calc(var(--cell) * 2.3); }
+.gridcell {
+  position: relative;
+  padding: calc(var(--cell) * 0.5) 2px 0;
+  border: 0;
+  border-left: 1px solid transparent;
+  border-radius: 2px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  min-width: 0;
+  /* A chord is wider than the cell that holds it, and the cells beside it are
+     usually empty. Letting it run is how the Editor grid reads; clipping it
+     turns every symbol into a stump. */
+  overflow: visible;
+}
+.gridcell:hover { background: color-mix(in srgb, var(--paper-ink) 7%, transparent); }
+.gridcell.selected { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+.gridcell.bar-single { border-left-color: currentColor; }
+.gridcell.bar-double { border-left: 3px double currentColor; }
+.gridcell.bar-repeat { border-left: 3px double var(--paper-red); }
+.gridcell.bar-close { border-right: 3px double currentColor; }
+.gridchord { font-size: calc(var(--cell) * 0.62); font-weight: 700; white-space: nowrap; }
+.gridmarks {
+  position: absolute;
+  top: 1px;
+  left: 3px;
+  font-size: calc(var(--cell) * 0.32);
+  color: var(--paper-red);
+  white-space: nowrap;
+}
+.gridcomment {
+  position: absolute;
+  bottom: 0;
+  left: 3px;
+  font-size: calc(var(--cell) * 0.28);
+  font-style: italic;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* ---------- update banner and hints ---------- */
+
+.banner {
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: #1b2730;
+  color: #e6e3da;
+  font-size: 12.5px;
+  box-shadow: 0 8px 28px -10px rgba(0, 0, 0, 0.5);
+  z-index: 30;
+}
+.banner button {
+  padding: 3px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.banner button.quiet { background: transparent; color: inherit; opacity: 0.75; }
+
+.dropzone-hint {
+  position: fixed;
+  right: 14px;
+  bottom: 8px;
+  font-size: 10.5px;
+  color: var(--ink-2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+.app.dragging .dropzone-hint { opacity: 1; }
+
+/* ---------- narrow windows ---------- */
+
+@media (max-width: 900px) {
+  .panes,
+  .panes.no-sources,
+  .panes.no-panel,
+  .panes.no-sources.no-panel {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 34vh minmax(0, 1fr);
+  }
+  .sources { display: none; }
+  .panel { display: none; }
+  /* On a phone the page fits the width instead, which is the one place
+     reflowing to the window beats holding the proportions. */
+  .page { width: 100%; max-width: calc(var(--cell) * 17.2); }
+}
+
+/* ---------- print ---------- */
+
+@media print {
+  /* Browser print of the DOM page beats any JS PDF library, and costs nothing
+     to maintain. The page goes to ink on paper. */
+  .titlebar,
+  .sources,
+  .songlist,
+  .panel,
+  .bottombar,
+  .diagram-dock,
+  .dropzone-hint,
+  .banner,
+  .scrim,
+  .popover { display: none !important; }
+
+  body { overflow: visible; }
+  .app { display: block; height: auto; }
+  .panes { display: block; }
+  .stage { background: #fff; display: block; }
+  .stage-page { display: block; }
+  .chart-fit { display: block; padding: 0; overflow: visible; }
+
+  .page {
+    width: 100%;
+    /* On paper the sheet is the paper, so it stops holding its own shape —
+       and the grain, the shadow and the arrival are all screen manners. */
+    min-height: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    animation: none;
+    background: #fff;
+    color: #000;
+    --paper-ink: #000;
+    --paper-red: #000;
+    --paper-blue: #000;
+  }
+  .bar.playing, .bar.looped, .bar.selected { background: none !important; }
+  .beats { display: none; }
+  .row { page-break-inside: avoid; }
+  @page { margin: 14mm; }
+}
+
+/* ---------- the chart face ---------- */
+
+/*
+ * Petaluma Script — Steinberg Media Technologies, SIL Open Font License 1.1.
+ * Licence text ships alongside the font at /fonts/OFL.txt.
+ *
+ * It is modelled on the hand copyists of the Sher Publishing Real Books, which
+ * is exactly the look a chord chart wants. 51 KB, so the whole face is
+ * precached with the app rather than subset.
+ */
+@font-face {
+  font-family: 'Petaluma Script';
+  src: url('/fonts/PetalumaScript.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  /* Show the fallback immediately and swap when the face arrives: a blank
+     chart is worse than a chart in the wrong font. */
+  font-display: swap;
+}
+
+.page.face-script .chord,
+.page.face-script .alternate,
+.page.face-script .section,
+.page.face-script .ending,
+.page.face-script .meter {
+  font-family: 'Petaluma Script', 'Segoe UI', system-ui, sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+/* The script face runs small and light next to a UI sans. */
+.page.face-script .chord { font-size: calc(var(--cell) * 1.18); }
+.page.face-script .chord.small { font-size: calc(var(--cell) * 0.86); }
+.page.face-script .meter { font-size: calc(var(--cell) * 0.78); }
+.page.face-script .over { font-size: 0.76em; }
+
+.glyph-svg { vertical-align: -0.12em; display: inline-block; }
+.marks .glyph-svg { vertical-align: middle; }

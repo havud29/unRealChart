@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "types": ["vite/client", "vite-plugin-pwa/client"],
+    "paths": {
+      "@ifakepro/ireal-format": ["../../packages/ireal-format/src/index.ts"],
+      "@ifakepro/song-model": ["../../packages/song-model/src/index.ts"],
+      "@ifakepro/groove-engine": ["../../packages/groove-engine/src/index.ts"],
+      "@ifakepro/audio-host": ["../../packages/audio-host/src/index.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "vite.config.ts"]
+}

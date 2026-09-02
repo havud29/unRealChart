@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/ireal-format"
+    },
+    {
+      "path": "./packages/song-model"
+    },
+    {
+      "path": "./packages/groove-engine"
+    },
+    {
+      "path": "./packages/audio-host"
+    }
+  ]
+}
