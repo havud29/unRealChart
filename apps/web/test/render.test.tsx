@@ -108,11 +108,11 @@ describe('Chart', () => {
     expect(marked).not.toContain('\u{1D10C}');
   });
 
-  it('sets chords in a plain face by default, with the script face on request', () => {
-    // Plain and evenly sized is the readable default; the copyist script is
-    // there for anyone who wants a chart to look handwritten.
-    expect(html).toContain('face-sans');
-    expect(renderToStaticMarkup(<Chart model={model} face="script" />)).toContain('face-script');
+  it('sets chords in one plain face', () => {
+    // One face, no picker: the copyist script has been removed, so a chart
+    // cannot be set in anything but readable text.
+    expect(html).toContain('class="page"');
+    expect(html).not.toContain('face-');
   });
 
   it('draws barlines on the bar, not as bars', () => {

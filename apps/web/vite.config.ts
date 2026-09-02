@@ -32,7 +32,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png}'],
         // Charts live in IndexedDB and are never fetched, so there is no runtime
         // caching to configure: if it is not in the shell, we do not need the
         // network for it.

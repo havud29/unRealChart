@@ -44,7 +44,7 @@ function frame(
 /**
  * The major-seventh triangle.
  *
- * Petaluma Script has no glyph for it — nor for the diminished circle — so
+ * No text face reliably carries it — nor the diminished circle — so
  * these two would drop to the system font in the middle of a chord symbol,
  * which reads as a mistake. Drawn, they sit in the script's own weight.
  */

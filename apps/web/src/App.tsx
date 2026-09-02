@@ -188,7 +188,6 @@ export function App() {
 
   // Chart appearance — reading preferences, stored per device, exactly as
   // iReal Pro treats them.
-  const [face, setFace] = useState<'script' | 'sans'>('sans');
   // The three page treatments the Mac screenshots show. This is the paper, and
   // it is independent of the app's own light/dark theme.
   const [paper, setPaper] = useState<'white' | 'cream' | 'black'>('white');
@@ -769,7 +768,6 @@ export function App() {
                   <Chart
                     model={shown}
                     showBeats={showBeats}
-                    face={face}
                     playingBar={marker === 'hidden' ? null : player.currentSourceBar}
                     cuedBar={player.cuedBar}
                     onSeek={(bar) => player.seekToBar(bar)}
@@ -1003,20 +1001,6 @@ export function App() {
 
       {menu === 'settings' ? (
         <div className="popover pop-settings">
-          <p className="pop-group">Font</p>
-          <div className="pop-seg">
-            {(['script', 'sans'] as const).map((f) => (
-              <button
-                type="button"
-                key={f}
-                className={face === f ? 'on' : ''}
-                onClick={() => setFace(f)}
-              >
-                {f === 'script' ? 'Handwriting' : 'Classic'}
-              </button>
-            ))}
-          </div>
-
           <p className="pop-group">Paper</p>
           <div className="pop-seg">
             {(['white', 'cream', 'black'] as const).map((t) => (

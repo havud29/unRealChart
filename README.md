@@ -215,15 +215,10 @@ does, rather than becoming a letterbox. Only a thirteenth system grows the
 sheet, and `sheetMetrics` in `Chart.tsx` is unit-tested to keep it that way.
 
 
-Chord symbols are set in **Petaluma Script** (Steinberg, SIL Open Font License),
-the face modelled on the Sher Publishing *Real Book* copyists. It is 51 KB, so
-the whole thing ships and is precached rather than subset. The licence travels
-with it at `/fonts/OFL.txt`.
-
-A **sans** face is offered alongside it under **Aa** in the title bar — some
-readers genuinely cannot read a script face at speed, which is an accessibility
-need rather than a preference. The same menu carries the three page treatments
-iReal Pro offers: white, cream and black.
+Chord symbols are set in the reader's own UI sans, at one size throughout. No
+web font is downloaded and none is bundled: a chart is information to read at
+speed off a music stand, and an evenly-set text face does that better than a
+handwriting face does. Only what the chart itself marks small is drawn smaller.
 
 The musical signs — segno, coda, fermata, the repeat bars, and the major
 triangle and diminished circle inside chord symbols — are drawn as inline SVG

@@ -77,8 +77,8 @@ export function sheetMetrics(systems: number): { system: number; page: number } 
 /**
  * Prettify a written symbol without changing what the user typed.
  *
- * Only the characters the chart face actually carries. The major triangle and
- * the diminished circle are drawn instead — see `qualityNodes`.
+ * Only the characters a text face carries. The major triangle and the
+ * diminished circle are drawn instead — see `qualityNodes`.
  */
 function prettify(text: string): string {
   return text.replace(/h/g, 'ø').replace(/b/g, '♭').replace(/#/g, '♯');
@@ -104,8 +104,8 @@ function Note({ name }: { name: string }) {
 }
 
 /**
- * A quality as renderable parts: text where the face has glyphs, drawn shapes
- * where it does not.
+ * A quality as renderable parts: text where a font has the character, drawn
+ * shapes where it does not.
  */
 function qualityNodes(quality: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -327,12 +327,6 @@ export interface ChartProps {
   /** A range dragged across the chart, which is how iReal Pro sets a loop. */
   onSelectRange?: (fromBar: number, toBar: number) => void;
   /**
-   * The chart face. Script is the copyist hand a lead sheet is written in;
-   * sans is there because some readers genuinely cannot read a script face at
-   * speed, which is an accessibility need rather than a preference.
-   */
-  face?: 'script' | 'sans';
-  /**
    * The bar play will start from, set by clicking the chart while stopped.
    * Drawn only while stopped -- once playing, the playhead says where we are.
    */
@@ -366,7 +360,6 @@ export function Chart({
   cuedBar = null,
   onSeek,
   onSelectRange,
-  face = 'sans',
   loop = null,
 }: ChartProps) {
   const rows = layout(model.bars);
@@ -448,7 +441,7 @@ export function Chart({
   return (
     <div className="chart-fit" ref={fitRef}>
       <article
-        className={`page face-${face}`}
+        className="page"
         style={
           {
             '--cell': `${cell}px`,

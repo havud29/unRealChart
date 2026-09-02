@@ -1505,40 +1505,7 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   @page { margin: 14mm; }
 }
 
-/* ---------- the chart face ---------- */
-
-/*
- * Petaluma Script — Steinberg Media Technologies, SIL Open Font License 1.1.
- * Licence text ships alongside the font at /fonts/OFL.txt.
- *
- * It is modelled on the hand copyists of the Sher Publishing Real Books, which
- * is exactly the look a chord chart wants. 51 KB, so the whole face is
- * precached with the app rather than subset.
- */
-@font-face {
-  font-family: 'Petaluma Script';
-  src: url('/fonts/PetalumaScript.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  /* Show the fallback immediately and swap when the face arrives: a blank
-     chart is worse than a chart in the wrong font. */
-  font-display: swap;
-}
-
-.page.face-script .chord,
-.page.face-script .alternate,
-.page.face-script .section,
-.page.face-script .ending,
-.page.face-script .meter {
-  font-family: 'Petaluma Script', 'Segoe UI', system-ui, sans-serif;
-  font-weight: 400;
-  letter-spacing: 0.01em;
-}
-/* The script face runs small and light next to a UI sans. */
-.page.face-script .chord { font-size: calc(var(--cell) * 1.18); }
-.page.face-script .chord.small { font-size: calc(var(--cell) * 0.86); }
-.page.face-script .meter { font-size: calc(var(--cell) * 0.78); }
-.page.face-script .over { font-size: 0.76em; }
+/* ---------- drawn musical signs ---------- */
 
 .glyph-svg { vertical-align: -0.12em; display: inline-block; }
 .marks .glyph-svg { vertical-align: middle; }
