@@ -1,4 +1,4 @@
-import type { DrumVoice, NoteEvent } from '@ifakepro/groove-engine';
+import type { DrumVoice, NoteEvent } from '@unrealchart/groove-engine';
 
 /**
  * The built-in instrument set.

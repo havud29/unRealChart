@@ -268,7 +268,7 @@ export interface MusicXmlOptions {
 
 /** Render a song model as a MusicXML lead sheet. */
 export function toMusicXml(model: SongModel, options: MusicXmlOptions = {}): string {
-  const encoder = options.encoder ?? 'iFakePro';
+  const encoder = options.encoder ?? 'unRealChart';
   const key = keyFifths(model.meta.key || 'C');
 
   const lines: string[] = [

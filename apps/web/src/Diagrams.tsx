@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
-import type { BarChord } from '@ifakepro/song-model';
-import { GUITAR, UKULELE, fingerings, pitchClassesOf } from '@ifakepro/groove-engine';
-import type { Instrument } from '@ifakepro/groove-engine';
+import type { BarChord } from '@unrealchart/song-model';
+import { GUITAR, UKULELE, fingerings, pitchClassesOf } from '@unrealchart/groove-engine';
+import type { Instrument } from '@unrealchart/groove-engine';
 
 /**
  * Chord diagrams for the chord that is sounding.

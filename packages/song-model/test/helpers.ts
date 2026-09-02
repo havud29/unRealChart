@@ -1,4 +1,4 @@
-import { parsePlaylist } from '@ifakepro/ireal-format';
+import { parsePlaylist } from '@unrealchart/ireal-format';
 import { buildSongModel, chordSymbol, unroll } from '../src/index.js';
 import type { Bar, SongModel, UnrollOptions } from '../src/index.js';
 

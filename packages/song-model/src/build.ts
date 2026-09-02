@@ -1,4 +1,4 @@
-import type { Cell, Chord, Song } from '@ifakepro/ireal-format';
+import type { Cell, Chord, Song } from '@unrealchart/ireal-format';
 import { DEFAULT_TIME, meterFromAnnotation } from './meter.js';
 import { parseDirectives } from './directives.js';
 import type {

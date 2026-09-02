@@ -1,5 +1,5 @@
 {
-  "name": "@ifakepro/song-model",
+  "name": "@unrealchart/song-model",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,5 +8,5 @@
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc -b" },
-  "dependencies": { "@ifakepro/ireal-format": "*" }
+  "dependencies": { "@unrealchart/ireal-format": "*" }
 }

@@ -1,4 +1,4 @@
-import type { NoteEvent } from '@ifakepro/groove-engine';
+import type { NoteEvent } from '@unrealchart/groove-engine';
 import { Mixer } from './mixer.js';
 import { EventCursor } from './scheduler.js';
 import { BuiltInInstruments } from './synth.js';

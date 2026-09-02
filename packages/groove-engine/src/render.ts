@@ -1,7 +1,7 @@
-import type { SongModel, TimemapEntry, UnrolledBar } from '@ifakepro/song-model';
-import { buildTimemap, unroll } from '@ifakepro/song-model';
+import type { SongModel, TimemapEntry, UnrolledBar } from '@unrealchart/song-model';
+import { buildTimemap, unroll } from '@unrealchart/song-model';
 import { generateBass, rootOf } from './bass.js';
-import type { BarChord } from '@ifakepro/song-model';
+import type { BarChord } from '@unrealchart/song-model';
 import { Random, seedFrom } from './random.js';
 import { COMP_PATTERNS, DRUM_PATTERNS, SECTION_ACCENT, fitPattern } from './patterns.js';
 import type {

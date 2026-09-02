@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parsePlaylist } from '@ifakepro/ireal-format';
-import { buildSongModel, formatMeter } from '@ifakepro/song-model';
+import { parsePlaylist } from '@unrealchart/ireal-format';
+import { buildSongModel, formatMeter } from '@unrealchart/song-model';
 import { COMP_PATTERNS, DRUM_PATTERNS, PACKS, renderGroove, selectPack } from '../src/index.js';
 import type { GroovePack } from '../src/index.js';
 

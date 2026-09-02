@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { EventCursor, repeatSpan } from '../src/scheduler.js';
-import type { NoteEvent } from '@ifakepro/groove-engine';
+import type { NoteEvent } from '@unrealchart/groove-engine';
 
 /**
  * The windowing is the part of a player that drops or doubles notes, so it is

@@ -3,7 +3,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 rem ---------------------------------------------------------------------------
-rem  iFakePro launcher
+rem  unRealChart launcher
 rem
 rem    run              start the web app (installs dependencies first run)
 rem    run test         run the test suite
@@ -58,10 +58,10 @@ exit /b 1
 
 :dev
 echo.
-echo   Starting iFakePro at http://localhost:5173
+echo   Starting unRealChart at http://localhost:5173
 echo   Press Ctrl+C to stop.
 echo.
-call npm run dev --workspace @ifakepro/web -- --open
+call npm run dev --workspace @unrealchart/web -- --open
 exit /b %errorlevel%
 
 :test
@@ -90,7 +90,7 @@ call npx vite-node tools/print-chart.ts -- %2 %3 %4 %5 %6
 exit /b %errorlevel%
 
 :build
-call npm run build --workspace @ifakepro/web
+call npm run build --workspace @unrealchart/web
 exit /b %errorlevel%
 
 :shot

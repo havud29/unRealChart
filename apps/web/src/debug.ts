@@ -1,7 +1,7 @@
-import { parsePlaylist } from '@ifakepro/ireal-format';
-import { buildSongModel, buildTimemap, toMusicXml, transposeModel, unroll } from '@ifakepro/song-model';
-import { PACKS, packById, renderGroove, selectPack } from '@ifakepro/groove-engine';
-import { renderToBuffer } from '@ifakepro/audio-host';
+import { parsePlaylist } from '@unrealchart/ireal-format';
+import { buildSongModel, buildTimemap, toMusicXml, transposeModel, unroll } from '@unrealchart/song-model';
+import { PACKS, packById, renderGroove, selectPack } from '@unrealchart/groove-engine';
+import { renderToBuffer } from '@unrealchart/audio-host';
 
 /**
  * A handle on the packages from the page, for tooling.
@@ -13,11 +13,11 @@ import { renderToBuffer } from '@ifakepro/audio-host';
  */
 declare global {
   interface Window {
-    __ifakepro?: Record<string, unknown>;
+    __unrealchart?: Record<string, unknown>;
   }
 }
 
-window.__ifakepro = {
+window.__unrealchart = {
   parsePlaylist,
   buildSongModel,
   buildTimemap,

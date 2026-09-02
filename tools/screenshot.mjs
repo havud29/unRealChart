@@ -37,7 +37,7 @@ async function isUp() {
 let server = null;
 if (!(await isUp())) {
   console.log('starting dev server…');
-  server = spawn('npm', ['run', 'dev', '--workspace', '@ifakepro/web'], {
+  server = spawn('npm', ['run', 'dev', '--workspace', '@unrealchart/web'], {
     stdio: 'ignore',
     shell: true,
   });

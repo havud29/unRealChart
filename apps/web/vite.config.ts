@@ -10,13 +10,13 @@ export default defineConfig({
     react(),
     VitePWA({
       // The app has no backend and no sample assets — the whole thing is the
-      // shell — so precaching it makes iFakePro genuinely usable with the
+      // shell — so precaching it makes unRealChart genuinely usable with the
       // network off, which is the state a musician on a stand is usually in.
       registerType: 'prompt',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'iFakePro',
-        short_name: 'iFakePro',
+        name: 'unRealChart',
+        short_name: 'unRealChart',
         description: 'Chord charts you can read, edit and play.',
         start_url: '/',
         scope: '/',
@@ -49,10 +49,10 @@ export default defineConfig({
     alias: {
       // Workspace packages ship TypeScript source, not a build. Aliasing
       // straight to source keeps HMR working across package boundaries.
-      '@ifakepro/ireal-format': src('../../packages/ireal-format/src/index.ts'),
-      '@ifakepro/song-model': src('../../packages/song-model/src/index.ts'),
-      '@ifakepro/groove-engine': src('../../packages/groove-engine/src/index.ts'),
-      '@ifakepro/audio-host': src('../../packages/audio-host/src/index.ts'),
+      '@unrealchart/ireal-format': src('../../packages/ireal-format/src/index.ts'),
+      '@unrealchart/song-model': src('../../packages/song-model/src/index.ts'),
+      '@unrealchart/groove-engine': src('../../packages/groove-engine/src/index.ts'),
+      '@unrealchart/audio-host': src('../../packages/audio-host/src/index.ts'),
     },
   },
   server: {

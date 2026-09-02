@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { parsePlaylist, replaceMusic, scramble, toHtml } from '@ifakepro/ireal-format';
-import type { Playlist, Song } from '@ifakepro/ireal-format';
+import { parsePlaylist, replaceMusic, scramble, toHtml } from '@unrealchart/ireal-format';
+import type { Playlist, Song } from '@unrealchart/ireal-format';
 import {
   INSTRUMENT_OFFSETS,
   buildSongModel,
@@ -10,9 +10,9 @@ import {
   totalDuration,
   transposeModel,
   unroll,
-} from '@ifakepro/song-model';
-import type { InstrumentKey } from '@ifakepro/song-model';
-import { PACKS, toMidiFile } from '@ifakepro/groove-engine';
+} from '@unrealchart/song-model';
+import type { InstrumentKey } from '@unrealchart/song-model';
+import { PACKS, toMidiFile } from '@unrealchart/groove-engine';
 import { Chart } from './Chart.js';
 import { DEFAULT_SETTINGS, usePlayer } from './usePlayer.js';
 import type { PlayerSettings } from './usePlayer.js';
@@ -36,7 +36,7 @@ const DEMO_URI = `irealb://${encodeURIComponent(
     'Blues in F',
     // Single word on purpose: a two-word composer is stored last-name-first and
     // would come back reversed, which is correct but looks like a bug in a demo.
-    'iFakePro',
+    'unRealChart',
     '',
     'Medium Swing',
     'F',
@@ -556,7 +556,7 @@ export function App() {
           </span>
         </div>
 
-        <div className="tb-title">{song ? song.title : 'iFakePro'}</div>
+        <div className="tb-title">{song ? song.title : 'unRealChart'}</div>
 
         <div className="tb-group tb-right">
           <button

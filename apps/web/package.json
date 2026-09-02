@@ -1,5 +1,5 @@
 {
-  "name": "@ifakepro/web",
+  "name": "@unrealchart/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@ifakepro/audio-host": "*",
-    "@ifakepro/groove-engine": "*",
-    "@ifakepro/ireal-format": "*",
-    "@ifakepro/song-model": "*",
+    "@unrealchart/audio-host": "*",
+    "@unrealchart/groove-engine": "*",
+    "@unrealchart/ireal-format": "*",
+    "@unrealchart/song-model": "*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

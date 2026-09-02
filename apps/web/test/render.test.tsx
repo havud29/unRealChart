@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { parsePlaylist } from '@ifakepro/ireal-format';
-import { buildSongModel, transposeModel } from '@ifakepro/song-model';
+import { parsePlaylist } from '@unrealchart/ireal-format';
+import { buildSongModel, transposeModel } from '@unrealchart/song-model';
 import { Chart, sheetMetrics } from '../src/Chart.js';
 
 /**

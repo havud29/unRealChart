@@ -27,7 +27,7 @@ async function isUp() {
 
 let server = null;
 if (!(await isUp())) {
-  server = spawn('npm', ['run', 'dev', '--workspace', '@ifakepro/web'], { stdio: 'ignore', shell: true });
+  server = spawn('npm', ['run', 'dev', '--workspace', '@unrealchart/web'], { stdio: 'ignore', shell: true });
   for (let i = 0; i < 60 && !(await isUp()); i++) await sleep(500);
   if (!(await isUp())) {
     server.kill();
@@ -43,8 +43,8 @@ await page.goto(URL, { waitUntil: 'networkidle' });
 
 const report = await page.evaluate(async (grooveId) => {
   // The app exposes its packages on window for exactly this purpose.
-  const api = window.__ifakepro;
-  if (!api) throw new Error('window.__ifakepro is not exposed');
+  const api = window.__unrealchart;
+  if (!api) throw new Error('window.__unrealchart is not exposed');
 
   const { parsePlaylist, buildSongModel, renderGroove, packById, renderToBuffer } = api;
 

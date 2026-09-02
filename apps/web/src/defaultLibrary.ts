@@ -1,5 +1,5 @@
-import type { Playlist } from '@ifakepro/ireal-format';
-import { parsePlaylist } from '@ifakepro/ireal-format';
+import type { Playlist } from '@unrealchart/ireal-format';
+import { parsePlaylist } from '@unrealchart/ireal-format';
 
 /**
  * The standard jazz library, fetched once so a new install is not empty.

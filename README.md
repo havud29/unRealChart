@@ -1,4 +1,4 @@
-# iFakePro
+# unRealChart
 
 A browser-native chord chart reader, editor and accompaniment player. Imports
 the iReal Pro playlists you already own; everything stays on your device.
@@ -41,7 +41,7 @@ Cross-platform equivalents:
 
 ```bash
 npm install
-npm run dev --workspace @ifakepro/web
+npm run dev --workspace @unrealchart/web
 npm test
 npm run typecheck
 npm run fixtures:fetch
@@ -150,7 +150,7 @@ its metadata drifting.
 
 ## Install it, and use it with the network off
 
-iFakePro is a progressive web app: install it from the browser and it runs from
+unRealChart is a progressive web app: install it from the browser and it runs from
 the home screen or dock in its own window, with no address bar.
 
 It works entirely offline, and not by accident — there is no backend, the
@@ -265,7 +265,7 @@ fresh clone still runs green.
 
 ## Notes on scope
 
-iFakePro is import-only and local-first. It does not host a chart database, ship
+unRealChart is import-only and local-first. It does not host a chart database, ship
 anything from iReal Pro, or use their branding — see `PLAN.md` §13.
 
 Dependency licensing matters here: `ireal-musicxml` is GPL-3.0 and is read as a

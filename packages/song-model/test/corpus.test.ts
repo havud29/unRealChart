@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parsePlaylist } from '@ifakepro/ireal-format';
+import { parsePlaylist } from '@unrealchart/ireal-format';
 import { barBeats, buildSongModel, transposeModel, unroll } from '../src/index.js';
 import type { SongModel } from '../src/index.js';
 

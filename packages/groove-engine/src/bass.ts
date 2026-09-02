@@ -1,4 +1,4 @@
-import type { BarChord } from '@ifakepro/song-model';
+import type { BarChord } from '@unrealchart/song-model';
 import { chordScale, chordTones, fold } from './harmony.js';
 import type { Random } from './random.js';
 import type { BassPart } from './types.js';

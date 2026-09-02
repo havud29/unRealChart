@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildSongModel } from '@ifakepro/song-model';
-import { serialize } from '@ifakepro/ireal-format';
+import { buildSongModel } from '@unrealchart/song-model';
+import { serialize } from '@unrealchart/ireal-format';
 import { NEW_CHART_KEY, NEW_CHART_TITLE, blankSong } from '../src/newChart.js';
 
 /**

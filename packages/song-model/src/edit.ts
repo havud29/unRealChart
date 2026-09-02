@@ -1,5 +1,5 @@
-import type { Cell, Chord } from '@ifakepro/ireal-format';
-import { chordToText, serializeForRoundTrip, tokenize } from '@ifakepro/ireal-format';
+import type { Cell, Chord } from '@unrealchart/ireal-format';
+import { chordToText, serializeForRoundTrip, tokenize } from '@unrealchart/ireal-format';
 
 /**
  * Editing the cell grid.

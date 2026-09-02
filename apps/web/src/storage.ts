@@ -1,5 +1,5 @@
-import type { Playlist, Song } from '@ifakepro/ireal-format';
-import { parsePlaylist } from '@ifakepro/ireal-format';
+import type { Playlist, Song } from '@unrealchart/ireal-format';
+import { parsePlaylist } from '@unrealchart/ireal-format';
 
 /**
  * The library, kept on the device.
@@ -12,7 +12,7 @@ import { parsePlaylist } from '@ifakepro/ireal-format';
  * keeping both.
  */
 
-const DB_NAME = 'ifakepro';
+const DB_NAME = 'unrealchart';
 const DB_VERSION = 1;
 const SONGS = 'songs';
 const SETTINGS = 'settings';
@@ -30,11 +30,23 @@ export interface StoredSong {
   importedAt: number;
 }
 
-function open(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+/**
+ * The database this app used to be called.
+ *
+ * Renaming the project renamed the store, and a store nobody reads is a
+ * library the user lost -- including any chart they wrote themselves, which
+ * exists nowhere else. The old database is copied across once, on the first
+ * open of an empty new one, and then left alone rather than deleted: a rename
+ * is not a good enough reason to destroy the only copy of someone's work.
+ */
+const LEGACY_DB_NAME = 'ifakepro';
+
+function openNamed(name: string, upgrade: boolean): Promise<IDBDatabase | null> {
+  return new Promise((resolve) => {
+    const request = upgrade ? indexedDB.open(name, DB_VERSION) : indexedDB.open(name);
     request.onupgradeneeded = () => {
       const db = request.result;
+      if (!upgrade) return;
       if (!db.objectStoreNames.contains(SONGS)) {
         const store = db.createObjectStore(SONGS, { keyPath: 'id' });
         store.createIndex('playlist', 'playlist');
@@ -45,8 +57,54 @@ function open(): Promise<IDBDatabase> {
       }
     };
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => resolve(null);
+    request.onblocked = () => resolve(null);
   });
+}
+
+function readAll(db: IDBDatabase, store: string): Promise<unknown[]> {
+  return new Promise((resolve) => {
+    if (!db.objectStoreNames.contains(store)) return resolve([]);
+    const request = db.transaction(store, 'readonly').objectStore(store).getAll();
+    request.onsuccess = () => resolve(request.result as unknown[]);
+    request.onerror = () => resolve([]);
+  });
+}
+
+/** Copy the old library over, if there is one and the new store is empty. */
+async function migrateLegacy(db: IDBDatabase): Promise<void> {
+  const held = await new Promise<number>((resolve) => {
+    const request = db.transaction(SONGS, 'readonly').objectStore(SONGS).count();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => resolve(-1);
+  });
+  if (held !== 0) return;
+
+  // Opening without a version will not create a database that is not there:
+  // an absent one arrives with no object stores, and there is nothing to move.
+  const legacy = await openNamed(LEGACY_DB_NAME, false);
+  if (!legacy) return;
+  try {
+    const songs = (await readAll(legacy, SONGS)) as StoredSong[];
+    if (songs.length === 0) return;
+    const tx = db.transaction(SONGS, 'readwrite');
+    const store = tx.objectStore(SONGS);
+    for (const song of songs) store.put(song);
+    await new Promise<void>((resolve) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+    console.info(`[unrealchart] moved ${songs.length} songs from the previous library`);
+  } finally {
+    legacy.close();
+  }
+}
+
+async function open(): Promise<IDBDatabase> {
+  const db = await openNamed(DB_NAME, true);
+  if (!db) throw new Error('could not open the library');
+  await migrateLegacy(db);
+  return db;
 }
 
 function run<T>(store: IDBObjectStore, request: IDBRequest<T>): Promise<T> {
@@ -116,7 +174,7 @@ export function createLibrary(): LibraryStore {
     try {
       return await work(await database());
     } catch (error) {
-      console.warn('[ifakepro] library storage unavailable:', error);
+      console.warn('[unrealchart] library storage unavailable:', error);
       return fallback;
     }
   };
@@ -170,7 +228,7 @@ export function createLibrary(): LibraryStore {
               // it -- most likely a URI whose scheme does not match how its
               // record is encoded. Dropping it silently hides that; say so.
               console.warn(
-                `[ifakepro] dropping unreadable song ${record.id} (${record.title}):`,
+                `[unrealchart] dropping unreadable song ${record.id} (${record.title}):`,
                 error,
               );
               return [];

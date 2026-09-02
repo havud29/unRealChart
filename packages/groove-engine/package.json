@@ -1,5 +1,5 @@
 {
-  "name": "@ifakepro/groove-engine",
+  "name": "@unrealchart/groove-engine",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,5 +8,5 @@
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc -b" },
-  "dependencies": { "@ifakepro/song-model": "*" }
+  "dependencies": { "@unrealchart/song-model": "*" }
 }

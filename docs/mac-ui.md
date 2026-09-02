@@ -165,7 +165,7 @@ The bottom transport bar stays visible while editing.
 
 ---
 
-## What this means for iFakePro
+## What this means for unRealChart
 
 The largest gaps against our current UI:
 

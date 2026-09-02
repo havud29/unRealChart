@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
-import type { Cell, Song } from '@ifakepro/ireal-format';
-import { chordToText, tokenize } from '@ifakepro/ireal-format';
+import type { Cell, Song } from '@unrealchart/ireal-format';
+import { chordToText, tokenize } from '@unrealchart/ireal-format';
 import {
   CELLS_PER_ROW,
   EditHistory,
@@ -22,8 +22,8 @@ import {
   setSpacer,
   toPayload,
   toggleAnnotation,
-} from '@ifakepro/song-model';
-import type { CloseBarline, OpenBarline } from '@ifakepro/song-model';
+} from '@unrealchart/song-model';
+import type { CloseBarline, OpenBarline } from '@unrealchart/song-model';
 import { Coda, Fermata, RepeatBar, RepeatTwoBars, Segno } from './Glyphs.js';
 
 /**

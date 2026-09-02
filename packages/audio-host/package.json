@@ -1,5 +1,5 @@
 {
-  "name": "@ifakepro/audio-host",
+  "name": "@unrealchart/audio-host",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,5 +8,5 @@
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc -b" },
-  "dependencies": { "@ifakepro/groove-engine": "*" }
+  "dependencies": { "@unrealchart/groove-engine": "*" }
 }

@@ -9,10 +9,10 @@
     "noEmit": true,
     "types": ["vite/client", "vite-plugin-pwa/client"],
     "paths": {
-      "@ifakepro/ireal-format": ["../../packages/ireal-format/src/index.ts"],
-      "@ifakepro/song-model": ["../../packages/song-model/src/index.ts"],
-      "@ifakepro/groove-engine": ["../../packages/groove-engine/src/index.ts"],
-      "@ifakepro/audio-host": ["../../packages/audio-host/src/index.ts"]
+      "@unrealchart/ireal-format": ["../../packages/ireal-format/src/index.ts"],
+      "@unrealchart/song-model": ["../../packages/song-model/src/index.ts"],
+      "@unrealchart/groove-engine": ["../../packages/groove-engine/src/index.ts"],
+      "@unrealchart/audio-host": ["../../packages/audio-host/src/index.ts"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*.ts", "test/**/*.tsx", "vite.config.ts"]

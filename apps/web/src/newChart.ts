@@ -1,5 +1,5 @@
-import type { Song } from '@ifakepro/ireal-format';
-import { parsePlaylist } from '@ifakepro/ireal-format';
+import type { Song } from '@unrealchart/ireal-format';
+import { parsePlaylist } from '@unrealchart/ireal-format';
 
 /**
  * A blank chart to start writing on.

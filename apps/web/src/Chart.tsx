@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
-import type { Bar, BarChord, SongModel } from '@ifakepro/song-model';
+import type { Bar, BarChord, SongModel } from '@unrealchart/song-model';
 import { Coda, DimCircle, Fermata, Segno, Triangle } from './Glyphs.js';
 
 /**

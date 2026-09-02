@@ -1,4 +1,4 @@
-# iFakePro — Implementation Plan
+# unRealChart — Implementation Plan
 
 **A browser-native rebuild of iReal Pro.** Import the playlists you already own, edit the charts, and hear them played back by a style engine you control.
 
@@ -6,7 +6,7 @@
 |---|---|
 | **Target** | PWA, offline-first, mobile + desktop |
 | **Stack** | TypeScript + React + Web Audio |
-| **Repo** | `E:\Working\GitRepos\iFakePro` |
+| **Repo** | `E:\Working\GitRepos\unRealChart` |
 | **Effort** | ~18–22 weeks to v1 (one developer) |
 | **Hard part** | The style/accompaniment engine |
 | **Researched** | September 2026 — format verified against reference parsers and a real iReal Pro HTML export |
@@ -53,7 +53,7 @@ So: front-load the format work (fast, high-certainty) to get a usable reader ear
 
 ### 1.2 Deliberately out of scope
 
-**A public, searchable chart database.** iReal Pro's own catalogue is user-uploaded and lives on their forums for a reason. Keep iFakePro import-only and local-first — users bring their own charts. This removes the single largest legal exposure at zero cost to the product.
+**A public, searchable chart database.** iReal Pro's own catalogue is user-uploaded and lives on their forums for a reason. Keep unRealChart import-only and local-first — users bring their own charts. This removes the single largest legal exposure at zero cost to the product.
 
 ---
 
@@ -482,7 +482,7 @@ Chosen for a small team shipping a long-lived offline app. Versions verified cur
 | Testing | Vitest + Playwright | Unit for the pure packages, browser for render and audio. | — |
 
 > **⚠ Licensing trap — check before you `npm install`.**
-> `ireal-musicxml`, the most complete open iReal Pro parser, is **GPL-3.0**. Depending on it makes iFakePro GPL. Its parser is itself derived from `ireal-renderer` and `ireal-reader`, both **MIT** — base the implementation on those, or write from the format documentation directly (that's what §2 is for).
+> `ireal-musicxml`, the most complete open iReal Pro parser, is **GPL-3.0**. Depending on it makes unRealChart GPL. Its parser is itself derived from `ireal-renderer` and `ireal-reader`, both **MIT** — base the implementation on those, or write from the format documentation directly (that's what §2 is for).
 > Same caution for **MMA** (Musical MIDI Accompaniment): a superb groove library, but GPL — treat it as a reference for authoring our own packs, not a data source to vendor.
 > **Verovio** is LGPL-3.0 — linkable, but only worth it if we ever engrave real notation.
 
@@ -577,7 +577,7 @@ Not legal advice — but the shape of it is well established, and the following 
 ## 14. Repo layout and week one
 
 ```
-iFakePro/
+unRealChart/
 ├─ packages/
 │  ├─ ireal-format/     decode · unscramble · tokenize · encode
 │  ├─ song-model/       bars · timing · transpose · unroll · timemap

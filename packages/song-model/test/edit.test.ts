@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { chordToText, tokenize } from '@ifakepro/ireal-format';
+import { chordToText, tokenize } from '@unrealchart/ireal-format';
 import {
   EditHistory,
   ENDING,
@@ -19,7 +19,7 @@ import {
   toggleAnnotation,
 } from '../src/edit.js';
 import { buildSongModel } from '../src/build.js';
-import { parsePlaylist } from '@ifakepro/ireal-format';
+import { parsePlaylist } from '@unrealchart/ireal-format';
 
 const cellsOf = (music: string) => tokenize(music);
 const text = (chord: ReturnType<typeof parseChordInput>) => (chord ? chordToText(chord) : null);

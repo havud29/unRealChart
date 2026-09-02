@@ -1,4 +1,4 @@
-import type { NoteEvent } from '@ifakepro/groove-engine';
+import type { NoteEvent } from '@unrealchart/groove-engine';
 
 /**
  * Which events fall in the next slice of time.
