@@ -551,8 +551,8 @@ export function App() {
             <span className="icon-sidebar" />
           </button>
           <span className="wordmark">
-            <b>iFake</b>
-            <i>Pro</i>
+            <b>unReal</b>
+            <i>Chart</i>
           </span>
         </div>
 
