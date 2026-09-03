@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { parsePlaylist } from '@unrealchart/ireal-format';
 import { buildSongModel, transposeModel } from '@unrealchart/song-model';
-import { Chart, sheetMetrics } from '../src/Chart.js';
+import { Chart, fitScale, sheetMetrics } from '../src/Chart.js';
 
 /**
  * Smoke test for the chart renderer: a real parsed chart in, real markup out.
@@ -257,5 +257,36 @@ describe('chord type size', () => {
   it('still honours a chord the chart marks small', () => {
     const html = renderToStaticMarkup(<Chart model={chartModel('[T44sC^7 A-7 D-7 G7 Z')} />);
     expect(html).toContain('chord small');
+  });
+});
+
+describe('fitting a long symbol to its slot', () => {
+  it('leaves anything that fits at the one size', () => {
+    expect(fitScale(88, 60)).toBe(1);
+    expect(fitScale(88, 88)).toBe(1);
+    // A pixel of sub-pixel overflow is noise, not a reason to resize.
+    expect(fitScale(88, 89)).toBe(1);
+  });
+
+  it('shrinks a symbol wider than its slot, to inside the slot', () => {
+    const scale = fitScale(88, 100);
+    expect(scale).toBeLessThan(1);
+    // Fits inside rather than exactly filling it, so the symbol beside it is
+    // not left touching.
+    expect(100 * scale).toBeLessThan(88);
+  });
+
+  it('stops shrinking before a symbol becomes unreadable, even if it overruns', () => {
+    // The floor wins over the fit. Db^7#11 wanted 123px of an 88px slot on
+    // A Shade Of Jade: at 0.72 it is still a hair wider than its slot, and
+    // that is the intended trade -- a chord may overrun its neighbour's space
+    // slightly, as iReal Pro lets one overrun a barline, rather than shrink
+    // to something nobody can read from a music stand.
+    expect(fitScale(88, 123)).toBe(0.72);
+    expect(fitScale(40, 400)).toBe(0.72);
+  });
+
+  it('never grows a symbol', () => {
+    expect(fitScale(200, 40)).toBe(1);
   });
 });

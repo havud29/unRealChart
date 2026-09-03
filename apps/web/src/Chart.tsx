@@ -59,6 +59,30 @@ const SHEET = PAD_Y * 2 + HEADER + 8 * SYSTEM;
 const SYSTEM_MIN = 1.5;
 const SYSTEM_MAX = 3.2;
 
+/**
+ * How far a symbol may be shrunk to fit its share of a bar.
+ *
+ * Below this it stops being readable at chart distance, and a symbol that
+ * still does not fit is better slightly overrunning its neighbour than
+ * illegible -- iReal Pro lets a chord overrun a barline too.
+ */
+const MIN_FIT = 0.72;
+
+/** Fit to this much of the slot, so a shrunk symbol still has air beside it. */
+const FIT_MARGIN = 0.92;
+
+/**
+ * How much to shrink a symbol that is wider than its slot, or 1 to leave it.
+ *
+ * Kept separate from the DOM so the rule can be reasoned about and tested:
+ * everything that fits is left at one size, and what does not is brought down
+ * to a little inside its slot but never below what stays readable.
+ */
+export function fitScale(room: number, wanted: number): number {
+  if (room <= 0 || wanted <= room + 1) return 1;
+  return Math.max(MIN_FIT, (room * FIT_MARGIN) / wanted);
+}
+
 /** Below this the page stops shrinking and the stage scrolls instead. */
 const MIN_CELL = 13;
 /** Above this it stops growing, so a huge display does not give huge chords. */
@@ -397,6 +421,48 @@ export function Chart({
     observer.observe(element);
     return () => observer.disconnect();
   }, [page]);
+
+  /*
+   * Fit the few symbols that genuinely do not fit.
+   *
+   * Most chords fit their share of the bar with room to spare, and they are all
+   * set at one size -- that is what makes a page look evenly typeset. But a
+   * long symbol in a shared bar really can be wider than the space it has:
+   * `Db^7#11` twice in one bar wants about 123px of an 88px slot, and without
+   * help the two run straight through each other.
+   *
+   * So this measures rather than guesses. Shrinking every bar that holds two
+   * chords -- which is what we did before -- makes `G-7 C7` smaller than the
+   * `F^7` beside it for no reason a reader can see. Shrinking only what
+   * overflows leaves those alone and touches the handful that need it.
+   *
+   * Two passes, never interleaved: clear every scale and let layout settle,
+   * then measure them all, then apply. Measuring one chord while another is
+   * still scaled would read a width that is about to change.
+   */
+  useLayoutEffect(() => {
+    const element = fitRef.current;
+    if (!element) return;
+
+    const fit = () => {
+      const chords = element.querySelectorAll<HTMLElement>('.chord');
+      for (const chord of chords) chord.style.removeProperty('--fit');
+
+      const scales: Array<[HTMLElement, number]> = [];
+      for (const chord of chords) {
+        const scale = fitScale(chord.clientWidth, chord.scrollWidth);
+        if (scale !== 1) scales.push([chord, scale]);
+      }
+      for (const [chord, scale] of scales) chord.style.setProperty('--fit', String(scale));
+    };
+
+    // Deliberately not observed. Clearing the scales makes the symbols wide
+    // again, which can push the stage into showing a scrollbar, which resizes
+    // the observed element, which runs the pass again -- the chords flicker
+    // between two sizes forever. Layout only changes when the cell or the song
+    // changes, and both are dependencies here, so a pass per change is enough.
+    fit();
+  }, [model, cell]);
 
   // A drag across the chart selects a range; a click that never moved is a
   // request to play from that bar.

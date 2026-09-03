@@ -718,12 +718,16 @@ button, input, select { font: inherit; }
 .chords {
   display: flex;
   align-items: baseline;
-  gap: calc(var(--cell) * 0.06);
+  /* Real space between chords sharing a bar. At 0.06 of a cell two symbols sat
+     close enough to read as one word once either of them was long. */
+  gap: calc(var(--cell) * 0.18);
   min-width: 0;
 }
 .chord {
   position: relative;
-  font-size: calc(var(--cell) * 0.95);
+  /* One size for everything, except a symbol measured too wide for its slot:
+     see the fit pass in Chart.tsx. --fit is 1 for all but a handful. */
+  font-size: calc(var(--cell) * 0.95 * var(--fit, 1));
   /* Not bold. At chart size a regular weight is easier to read across a room
      than a heavy one, which fills its own counters in. */
   font-weight: 400;
@@ -733,7 +737,7 @@ button, input, select { font: inherit; }
   min-width: 0;
 }
 /* The one size that does change, because the chart asked for it. */
-.chord.small { font-size: calc(var(--cell) * 0.7); }
+.chord.small { font-size: calc(var(--cell) * 0.7 * var(--fit, 1)); }
 
 /*
  * A chord symbol is three sizes and two rows.
