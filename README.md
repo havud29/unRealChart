@@ -194,6 +194,22 @@ side. The parser lineage is the MIT-licensed `ireal-renderer` / `ireal-reader`.
 The only code shipped to a browser is React, React-DOM, and the four packages
 here.
 
+## Hosting it
+
+The app is static, so GitHub Pages serves it for nothing. Pushing to `master`
+builds and publishes it: see `.github/workflows/pages.yml`.
+
+Turn it on once, in **Settings → Pages → Source → GitHub Actions**. The site
+then lives at `https://<user>.github.io/unRealChart/`.
+
+A project site is served under the repository name rather than the domain
+root, which is why `base` is set in `apps/web/vite.config.ts` and why the
+sound banks resolve against it rather than against `/`. Publishing to a custom
+domain, which serves from the root, means setting `BASE_PATH=/` for the build.
+
+The workflow typechecks and runs the tests before publishing, and fetches the
+sampled instruments so the hosted app has them.
+
 ## Licence
 
 **Not yet chosen.** Without a LICENCE file the default is all rights reserved,

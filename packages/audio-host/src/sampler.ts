@@ -28,8 +28,17 @@ interface Bank {
 /** Semitones a sample may be shifted before it stops sounding like itself. */
 const NEAREST_LIMIT = 4;
 
-/** Where the banks live, relative to the site root. */
-const BANK_PATH = (id: string) => `/sounds/${id}.json`;
+/**
+ * Where the banks live.
+ *
+ * Given by the caller rather than assumed, because the app is not always
+ * served from the root of a domain: a GitHub Pages project site puts it under
+ * the repository name, and an absolute `/sounds/...` would quietly 404 there
+ * and leave every instrument on the synthesised fallback. This package has no
+ * business knowing about any of that, so it takes a base and joins to it.
+ */
+const bankPath = (base: string, id: string) =>
+  `${base.endsWith('/') ? base : `${base}/`}sounds/${id}.json`;
 
 function decodeDataUri(uri: string): ArrayBuffer {
   const base64 = uri.slice(uri.indexOf(',') + 1);
@@ -45,7 +54,11 @@ export class SampledInstruments implements InstrumentProvider {
   private readonly fallback: BuiltInInstruments;
   private readonly active = new Set<AudioBufferSourceNode>();
 
-  constructor(private readonly context: BaseAudioContext) {
+  constructor(
+    private readonly context: BaseAudioContext,
+    /** Where the app is served from. Defaults to the domain root. */
+    private readonly base: string = '/',
+  ) {
     this.fallback = new BuiltInInstruments(context);
   }
 
@@ -61,7 +74,7 @@ export class SampledInstruments implements InstrumentProvider {
       instruments.map(async (id) => {
         if (this.banks.has(id) || this.missing.has(id)) return;
         try {
-          const response = await fetch(BANK_PATH(id));
+          const response = await fetch(bankPath(this.base, id));
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = (await response.json()) as { notes: Record<string, string> };
 

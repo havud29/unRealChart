@@ -5,7 +5,23 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 const src = (p: string) => fileURLToPath(new URL(p, import.meta.url));
 
-export default defineConfig({
+/*
+ * Where the app is served from.
+ *
+ * GitHub Pages puts a project site under the repository name, so every asset
+ * has to be reached at `/unRealChart/...` rather than `/`. Set it only for a
+ * build: applying it in dev would move the dev server under the same subpath
+ * for no reason. Override it with BASE_PATH to publish somewhere else -- a
+ * custom domain serves from the root, where this should be `/`.
+ */
+const BASE = process.env.BASE_PATH ?? '/unRealChart/';
+
+export default defineConfig(({ command, isPreview }) => ({
+  // Preview serves what was built, so it has to agree with it: without
+  // `isPreview` the built HTML asks for `/unRealChart/...` while preview
+  // serves from the root, and every asset 404s in the one command whose job
+  // is to show you what will be published.
+  base: command === 'build' || isPreview ? BASE : '/',
   plugins: [
     react(),
     VitePWA({
@@ -18,8 +34,10 @@ export default defineConfig({
         name: 'unRealChart',
         short_name: 'unRealChart',
         description: 'Chord charts you can read, edit and play.',
-        start_url: '/',
-        scope: '/',
+        // Relative, so the installed app resolves against wherever it was
+        // installed from rather than the domain root.
+        start_url: '.',
+        scope: '.',
         display: 'standalone',
         orientation: 'any',
         background_color: '#1b2730',
@@ -58,4 +76,4 @@ export default defineConfig({
   server: {
     port: 5173,
   },
-});
+}));

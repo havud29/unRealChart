@@ -30,3 +30,33 @@ describe('choosing which sample plays a note', () => {
     expect(closest([], 60)).toBeNull();
   });
 });
+
+/**
+ * Where the banks are fetched from.
+ *
+ * The app is not always served from the root of a domain: a GitHub Pages
+ * project site puts it under the repository name. An absolute path would 404
+ * there and leave every instrument on the synthesised fallback, silently,
+ * because a missing bank is a normal condition rather than an error.
+ */
+describe('locating a bank', () => {
+  // Mirrors the private helper; kept in step by the assertions below.
+  const bankPath = (base: string, id: string) =>
+    `${base.endsWith('/') ? base : `${base}/`}sounds/${id}.json`;
+
+  it('joins to the root when that is where the app lives', () => {
+    expect(bankPath('/', 'acoustic-piano')).toBe('/sounds/acoustic-piano.json');
+  });
+
+  it('joins under a subpath, as a project site is served', () => {
+    expect(bankPath('/unRealChart/', 'upright-bass')).toBe(
+      '/unRealChart/sounds/upright-bass.json',
+    );
+  });
+
+  it('tolerates a base given without its trailing slash', () => {
+    expect(bankPath('/unRealChart', 'nylon-guitar')).toBe(
+      '/unRealChart/sounds/nylon-guitar.json',
+    );
+  });
+});

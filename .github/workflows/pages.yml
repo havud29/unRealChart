@@ -1,0 +1,65 @@
+# Build the app and publish it to GitHub Pages.
+#
+# The app is static: there is no server, no database and no secret, so the
+# whole thing is a build step and an upload. Charts live in the visitor's own
+# browser, which is what makes this hostable for nothing.
+name: Deploy to Pages
+
+on:
+  push:
+    branches: [master, main]
+  # So a deploy can be re-run from the Actions tab without an empty commit.
+  workflow_dispatch:
+
+# Pages needs these; the default token is read-only.
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deploy at a time. Queue rather than cancel, so a push that lands during
+# a deploy still reaches the site instead of being dropped.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # The gates that run locally, run here. A broken build should fail before
+      # it is published, not after.
+      - run: npm run typecheck
+      - run: npm test
+
+      # The sampled instruments are git-ignored, so they are fetched at deploy
+      # time. Roughly 3.6 MB, against a 1 GB Pages limit. Without this the site
+      # still works and every instrument falls back to the synthesised voice.
+      - run: npm run sounds:fetch
+
+      - run: npm run build --workspace @unrealchart/web
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: apps/web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

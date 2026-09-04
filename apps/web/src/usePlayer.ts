@@ -254,7 +254,9 @@ export function usePlayer(model: SongModel | null, settings: PlayerSettings): Pl
       // Recorded instruments where a bank has been fetched, synthesised where
       // not. The provider decides per instrument, so a partial download still
       // helps rather than being all or nothing.
-      transport = new Transport(context, { instruments: new SampledInstruments(context) });
+      transport = new Transport(context, {
+        instruments: new SampledInstruments(context, import.meta.env.BASE_URL),
+      });
       transport.onEnded = () => {
         setPlaying(false);
         setCurrentBar(null);
