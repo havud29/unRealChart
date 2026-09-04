@@ -3,7 +3,7 @@ import type { SongModel } from '@unrealchart/song-model';
 import { entryAt } from '@unrealchart/song-model';
 import { packById, renderClick, renderGroove, selectPack } from '@unrealchart/groove-engine';
 import type { GroovePack, RenderResult } from '@unrealchart/groove-engine';
-import { Transport, repeatSpan } from '@unrealchart/audio-host';
+import { SampledInstruments, Transport, repeatSpan } from '@unrealchart/audio-host';
 
 /**
  * Playback, as one hook.
@@ -251,7 +251,10 @@ export function usePlayer(model: SongModel | null, settings: PlayerSettings): Pl
     if (!transport) {
       // First gesture: this is the only moment a browser will let us start.
       const context = new AudioContext();
-      transport = new Transport(context);
+      // Recorded instruments where a bank has been fetched, synthesised where
+      // not. The provider decides per instrument, so a partial download still
+      // helps rather than being all or nothing.
+      transport = new Transport(context, { instruments: new SampledInstruments(context) });
       transport.onEnded = () => {
         setPlaying(false);
         setCurrentBar(null);

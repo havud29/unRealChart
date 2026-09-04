@@ -5,6 +5,11 @@ coverage/
 .DS_Store
 .vite/
 
+# Sampled instrument banks: tens of megabytes, fetched on demand with
+# `npm run sounds:fetch`. The app falls back to its synthesised instruments
+# when they are absent, so a clone without them still plays.
+apps/web/public/sounds/
+
 # Test corpora: user-contributed transcriptions of copyrighted songs.
 # Fetched on demand with `npm run fixtures:fetch`. Never committed.
 fixtures/

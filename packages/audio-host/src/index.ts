@@ -1,4 +1,5 @@
 export { EventCursor, repeatSpan } from './scheduler.js';
+export { SampledInstruments } from './sampler.js';
 export { BuiltInInstruments, BUILT_IN_INSTRUMENTS } from './synth.js';
 export type { InstrumentProvider } from './synth.js';
 export { Mixer } from './mixer.js';

@@ -226,6 +226,39 @@ rather than set in a font. Two reasons: the full SMuFL music face is 225 KB for
 glyphs a chart uses six of, and the script face has no triangle or circle, so a
 text `△` would silently drop to the system font in the middle of a symbol.
 
+## Sound
+
+The app plays through a **synthesised** instrument set by default. It is a few
+kilobytes, needs no network, and is the reason the whole thing installs at
+under a megabyte and works offline the moment it loads.
+
+**Recorded instruments are an optional upgrade.** Run:
+
+```
+npm run sounds:fetch
+```
+
+That downloads about 3.6 MB of sampled piano, electric piano, upright and
+electric bass, and nylon guitar into `apps/web/public/sounds/`, which is
+git-ignored. The player decides per instrument, so a partial download still
+helps: anything without a bank falls through to the synthesised voice, which
+is also how the drums keep playing — the soundfont carries no General MIDI
+kit, and the synthesised drums are the part of the built-in set that holds up
+best.
+
+Banks keep one sample every three semitones and pitch the rest from the
+nearest neighbour; past four semitones the sampler gives the note back to the
+synth rather than play something that no longer sounds like the instrument.
+That stride cuts each bank to about a third with no audible cost here.
+
+The samples come from **FluidR3_GM** via Benjamin Gleitzman's
+[midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts), under
+**Creative Commons Attribution 3.0** — attribution is a condition, and
+`sounds/CREDITS.md` is written alongside the banks to carry it. The same
+project's MusyngKite sounds better still but is Attribution-**ShareAlike**,
+which reaches further than a sample bank in a repository meant to stay
+permissively licensed, so it is not used.
+
 ## Grooves
 
 Nineteen, across three families:

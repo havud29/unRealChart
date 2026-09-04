@@ -64,7 +64,12 @@ export class Transport {
 
   async play(fromMs?: number): Promise<void> {
     if (this.context.state === 'suspended') await this.context.resume();
-    await this.instruments.prepare([]);
+    // Tell the provider what this song actually calls for. It was handed an
+    // empty list, which is fine for a synth that has everything already and
+    // useless to anything that has to load a bank per instrument.
+    await this.instruments.prepare([
+      ...new Set(this.events.filter((e) => !e.drum).map((e) => e.instrument)),
+    ]);
 
     const start = fromMs ?? this.pausedAtMs;
     this.cursor = new EventCursor(this.events);

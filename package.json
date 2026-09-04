@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -b tsconfig.json && tsc -p apps/web/tsconfig.json --noEmit",
-    "fixtures:fetch": "node tools/fetch-fixtures.mjs"
+    "fixtures:fetch": "node tools/fetch-fixtures.mjs",
+    "sounds:fetch": "node tools/fetch-sounds.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
