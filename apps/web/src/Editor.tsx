@@ -25,6 +25,7 @@ import {
 } from '@unrealchart/song-model';
 import type { CloseBarline, OpenBarline } from '@unrealchart/song-model';
 import { Coda, Fermata, RepeatBar, RepeatTwoBars, Segno } from './Glyphs.js';
+import { Symbol } from './Chart.js';
 
 /**
  * The chart editor.
@@ -68,21 +69,86 @@ const CLOSE_BARS: Array<[CloseBarline, string]> = [
 ];
 
 /** What a cell shows in the grid. The repeat signs are drawn, not typed. */
-function cellLabel(cell: Cell): ReactNode {
+/**
+ * A cell's chord, drawn the way the chart draws it.
+ *
+ * The editor used to show the payload text -- `Eb^7`, `C7b9`, and an alternate
+ * appended as `(Bb7)` -- which is what the format stores but not what anyone
+ * reads. You edit a chart by looking at it, so a cell has to show the same
+ * symbol the page will: real accidentals, the major triangle, the quality
+ * dropped and the bass stacked under it.
+ */
+export function cellLabel(cell: Cell): ReactNode {
   if (!cell.chord) return '';
   const chord = cell.chord;
   switch (chord.note) {
     case 'n':
-      return 'N.C.';
+      return <span className="c-root">N.C.</span>;
     case 'x':
       return <RepeatBar size={1.1} />;
     case 'r':
       return <RepeatTwoBars size={1.1} />;
     case 'p':
-      return '/';
+      return <span className="c-root">/</span>;
+    case ' ':
+    case 'W':
+      return '';
     default:
-      return chordToText(chord);
+      return (
+        <Symbol
+          root={chord.note}
+          quality={chord.modifiers}
+          bass={chord.over ? chord.over.note + chord.over.modifiers : null}
+        />
+      );
   }
+}
+
+/**
+ * The marks on a cell, as marks rather than as their payload codes.
+ *
+ * `*A` is a section, `T44` a meter, `N1` an ending, `Q` a coda. Printed raw
+ * they are a row of cryptic letters across the top of the grid; drawn, they
+ * are the same signs the chart shows, so the grid reads as the chart it is.
+ */
+export function annotationNodes(annots: readonly string[]): ReactNode[] {
+  return annots.map((annot, i) => {
+    if (SECTION.test(annot)) {
+      return (
+        <span className="gridsection" key={i}>
+          {annot.slice(1)}
+        </span>
+      );
+    }
+    if (METER.test(annot)) {
+      const beats = annot.slice(1, 2);
+      const unit = annot.slice(2);
+      return (
+        <span className="gridmeter" key={i}>
+          <b>{beats}</b>
+          <b>{unit}</b>
+        </span>
+      );
+    }
+    if (ENDING.test(annot)) {
+      return (
+        <span className="gridending" key={i}>
+          {annot.slice(1)}.
+        </span>
+      );
+    }
+    if (annot === 'S') return <Segno size={0.9} key={i} />;
+    if (annot === 'Q') return <Coda size={0.9} key={i} />;
+    if (annot === 'f') return <Fermata size={0.7} key={i} />;
+    if (annot === 'U') return <span className="gridend" key={i}>END</span>;
+    // `s` and `l` are the small/normal chord size switches; they have no sign,
+    // so they keep their letter rather than being invented one.
+    return (
+      <span className="gridflag" key={i}>
+        {annot.startsWith('*') ? annot.slice(1) : annot}
+      </span>
+    );
+  });
 }
 
 export interface EditorProps {
@@ -503,10 +569,23 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
                     inputRef.current?.focus();
                   }}
                 >
-                  <span className="gridmarks">
-                    {c.annots.map((a) => (a.startsWith('*') ? a.slice(1) : a)).join(' ')}
+                  <span className="gridmarks">{annotationNodes(c.annots)}</span>
+                  <span className="gridchord">
+                    {c.chord?.alternate ? (
+                      <span className="gridalt">
+                        <Symbol
+                          root={c.chord.alternate.note}
+                          quality={c.chord.alternate.modifiers}
+                          bass={
+                            c.chord.alternate.over
+                              ? c.chord.alternate.over.note + c.chord.alternate.over.modifiers
+                              : null
+                          }
+                        />
+                      </span>
+                    ) : null}
+                    {cellLabel(c)}
                   </span>
-                  <span className="gridchord">{cellLabel(c)}</span>
                   {c.comments.length > 0 ? <span className="gridcomment">{c.comments[0]}</span> : null}
                 </button>
               );

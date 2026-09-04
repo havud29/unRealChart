@@ -184,25 +184,36 @@ function qualityNodes(quality: string): ReactNode[] {
  * in, and the symbols collide into each other. Stacked, a slash chord takes no
  * more width than a plain one.
  */
-export function ChordSymbol({ chord }: { chord: BarChord }) {
-  if (chord.kind === 'nc') return <span className="c-root">N.C.</span>;
-  if (chord.kind === 'repeat') return <span className="c-root">/</span>;
-  if (!chord.root) return null;
-
-  const quality = chord.quality ? qualityNodes(chord.quality) : null;
-  const bass = chord.bass ? noteLabel(chord.bass) : null;
+export function Symbol({
+  root,
+  quality,
+  bass,
+}: {
+  root: string;
+  quality?: string | undefined;
+  bass?: string | null | undefined;
+}) {
+  const tail = quality ? qualityNodes(quality) : null;
+  const under = bass ? noteLabel(bass) : null;
 
   return (
     <>
-      <Note name={chord.root} />
-      {quality || bass ? (
+      <Note name={root} />
+      {tail || under ? (
         <span className="c-tail">
-          <span className="c-qual">{quality}</span>
-          {bass ? <span className="c-bass">/{bass}</span> : null}
+          <span className="c-qual">{tail}</span>
+          {under ? <span className="c-bass">/{under}</span> : null}
         </span>
       ) : null}
     </>
   );
+}
+
+export function ChordSymbol({ chord }: { chord: BarChord }) {
+  if (chord.kind === 'nc') return <span className="c-root">N.C.</span>;
+  if (chord.kind === 'repeat') return <span className="c-root">/</span>;
+  if (!chord.root) return null;
+  return <Symbol root={chord.root} quality={chord.quality} bass={chord.bass} />;
 }
 
 interface Row {
