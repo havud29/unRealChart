@@ -68,7 +68,18 @@ const CLOSE_BARS: Array<[CloseBarline, string]> = [
   ['final', '𝄂'],
 ];
 
-/** What a cell shows in the grid. The repeat signs are drawn, not typed. */
+/**
+ * A cell's chord as text for the edit box.
+ *
+ * Without the alternate and the private note: neither can be typed back in, so
+ * showing them would invite an edit that cannot survive the round trip. They
+ * are preserved on commit instead -- see `commitDraft`.
+ */
+export function chordTextOf(cell: Cell | undefined): string {
+  if (!cell?.chord) return '';
+  return chordToText({ ...cell.chord, alternate: null, text: null });
+}
+
 /**
  * A cell's chord, drawn the way the chart draws it.
  *
@@ -183,9 +194,21 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
     historyRef.current.reset(fresh);
     setCells(fresh);
     setCursor(0);
-    setDraft('');
+    setDraft(chordTextOf(fresh[0]));
     setDirty(false);
   }, [song]);
+
+  /*
+   * Select the box's contents when the cursor lands on a cell.
+   *
+   * The chord is there to be changed, so typing should replace it rather than
+   * append to it -- landing on `C-7` and typing `F` must give `F`, not `C-7F`.
+   * Only when the box already has focus: moving with the arrow keys should not
+   * steal focus from the grid.
+   */
+  useEffect(() => {
+    if (document.activeElement === inputRef.current) inputRef.current?.select();
+  }, [cursor]);
 
   const commit = useCallback((label: string, next: Cell[], coalesce = false) => {
     setCells(historyRef.current.apply(label, next, coalesce));
@@ -236,24 +259,49 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
 
   const move = useCallback(
     (delta: number) => {
-      setCursor((c) => Math.max(0, Math.min(cells.length - 1, c + delta)));
-      setDraft('');
+      setCursor((c) => {
+        const next = Math.max(0, Math.min(cells.length - 1, c + delta));
+        setDraft(chordTextOf(cells[next]));
+        return next;
+      });
     },
-    [cells.length],
+    [cells],
   );
 
   const commitDraft = useCallback(
     (advance: boolean) => {
       const text = draft.trim();
+      const existing = cells[cursor]?.chord ?? null;
+
+      // The box now shows what is there, so emptying it is a deliberate
+      // deletion rather than the no-op it was when the box always started
+      // blank.
       if (text === '') {
+        if (existing) commit('Clear chord', setChord(cells, cursor, null));
         if (advance) move(1);
         return;
       }
+
       const chord = parseChordInput(text);
       if (!chord) return; // leave the draft in place so the typo can be fixed
-      commit('Set chord', setChord(cells, cursor, chord));
-      setDraft('');
+
+      /*
+       * Keep what the box cannot show.
+       *
+       * An alternate chord and the writer's own `*note*` are not part of what
+       * is typed here and cannot be typed back in, so replacing the chord
+       * wholesale would delete them without saying so -- and with the chord
+       * pre-filled, pressing Enter without changing anything would be enough
+       * to do it. They are carried across unless the typed chord names its own.
+       */
+      const merged =
+        chord.alternate === null && chord.text === null && existing
+          ? { ...chord, alternate: existing.alternate, text: existing.text }
+          : chord;
+
+      commit('Set chord', setChord(cells, cursor, merged));
       if (advance) move(1);
+      else setDraft(chordTextOf({ ...cells[cursor]!, chord: merged }));
     },
     [draft, cells, cursor, commit, move],
   );
@@ -350,7 +398,8 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
           ref={inputRef}
           className="chord-input"
           value={draft}
-          placeholder={`Cell ${cursor + 1} — type a chord`}
+          // Only seen on an empty cell now that the box carries the chord.
+          placeholder={`Cell ${cursor + 1} — empty`}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
@@ -565,7 +614,7 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
                   key={index}
                   onClick={() => {
                     setCursor(index);
-                    setDraft('');
+                    setDraft(chordTextOf(c));
                     inputRef.current?.focus();
                   }}
                 >

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { tokenize } from '@unrealchart/ireal-format';
-import { annotationNodes, cellLabel } from '../src/Editor.js';
+import { annotationNodes, cellLabel, chordTextOf } from '../src/Editor.js';
 
 /**
  * The editor grid has to look like the chart it produces.
@@ -55,5 +55,33 @@ describe('a cell in the editor grid', () => {
     const html = draw(annotationNodes(['s']));
     expect(html).toContain('gridflag');
     expect(html).toContain('s');
+  });
+});
+
+describe('the chord in the edit box', () => {
+  const cellsOf2 = (music: string) => tokenize(music);
+
+  it('shows the chord as written, so it can be edited rather than retyped', () => {
+    const cells = cellsOf2('[T44Eb^7   Z');
+    expect(chordTextOf(cells.find((c) => c.chord?.note === 'Eb'))).toBe('Eb^7');
+  });
+
+  it('includes a slash bass', () => {
+    const cells = cellsOf2('[T44F^7/A   Z');
+    expect(chordTextOf(cells.find((c) => c.chord?.note === 'F'))).toBe('F^7/A');
+  });
+
+  it('leaves out an alternate, which cannot be typed back in', () => {
+    // Showing it would invite an edit that could not survive the round trip;
+    // commitDraft carries it across instead.
+    const cells = cellsOf2('[T44C^7(A-7)   Z');
+    const cell = cells.find((c) => c.chord?.note === 'C');
+    expect(cell?.chord?.alternate).toBeTruthy();
+    expect(chordTextOf(cell)).toBe('C^7');
+  });
+
+  it('is empty for a cell with no chord', () => {
+    expect(chordTextOf(undefined)).toBe('');
+    expect(chordTextOf(cellsOf2('[T44    Z')[1])).toBe('');
   });
 });
