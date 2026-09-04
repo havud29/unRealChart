@@ -139,20 +139,23 @@ function Fretboard({
   );
 }
 
-export interface DiagramsProps {
-  chord: BarChord | null;
+/** One chord: its name, and how to play it. */
+function OneChord({
+  chord,
+  label,
+  instrument,
+}: {
+  chord: BarChord;
   label: string;
-}
-
-export function Diagrams({ chord, label }: DiagramsProps) {
-  const [instrumentId, setInstrumentId] = useState<'piano' | 'guitar'>('guitar');
+  instrument: Instrument | null;
+}) {
+  // Shape choice is per chord, so cycling the voicing of one does not disturb
+  // the chord standing beside it.
   const [variant, setVariant] = useState(0);
 
-  const root = pitchClass(chord?.root ?? null);
-  const bass = pitchClass(chord?.bass ?? null);
-  const quality = chord?.quality ?? '';
-
-  const instrument: Instrument | null = instrumentId === 'guitar' ? GUITAR : null;
+  const root = pitchClass(chord.root);
+  const bass = pitchClass(chord.bass);
+  const quality = chord.quality;
 
   const shapes = useMemo(() => {
     if (root === null || !instrument) return [];
@@ -167,42 +170,27 @@ export function Diagrams({ chord, label }: DiagramsProps) {
   const shape = shapes[variant % Math.max(1, shapes.length)];
 
   return (
-    <div className="diagrams">
-      <div className="diagram-head">
+    <div className="one-chord">
+      <div className="one-chord-head">
         <span className="chordname">{label || '—'}</span>
-        <div className="picker">
-          {(['piano', 'guitar'] as const).map((id) => (
-            <button
-              type="button"
-              key={id}
-              className={instrumentId === id ? 'on' : ''}
-              onClick={() => {
-                setInstrumentId(id);
-                setVariant(0);
-              }}
-            >
-              {id}
-            </button>
-          ))}
-        </div>
         {instrument && shapes.length > 1 ? (
           <button
             type="button"
             className="variant"
             onClick={() => setVariant((v) => (v + 1) % shapes.length)}
           >
-            shape {(variant % shapes.length) + 1}/{shapes.length}
+            {(variant % shapes.length) + 1}/{shapes.length}
           </button>
         ) : null}
       </div>
 
       {root === null ? (
-        <p className="diagram-empty">No chord here.</p>
+        <p className="diagram-empty">—</p>
       ) : instrument ? (
         shape ? (
           <Fretboard instrument={instrument} frets={shape.frets} position={shape.position} />
         ) : (
-          <p className="diagram-empty">No playable shape for this chord.</p>
+          <p className="diagram-empty">No playable shape.</p>
         )
       ) : (
         <div className="piano-diagram">
@@ -215,6 +203,62 @@ export function Diagrams({ chord, label }: DiagramsProps) {
               </span>
             ))}
           </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export interface DiagramsProps {
+  /** Every chord in the bar, in the order they are played. */
+  chords: readonly BarChord[];
+  /** How each chord is written, matching `chords` by index. */
+  labels: readonly string[];
+}
+
+export function Diagrams({ chords, labels }: DiagramsProps) {
+  const [instrumentId, setInstrumentId] = useState<'piano' | 'guitar'>('guitar');
+  const instrument: Instrument | null = instrumentId === 'guitar' ? GUITAR : null;
+
+  // Only chords that name a pitch. A bar of `N.C.` or repeat marks has nothing
+  // to draw, and drawing an empty frame for it is worse than leaving it out.
+  //
+  // Label carried alongside rather than looked up afterwards: a bar can hold
+  // the same chord twice, and `indexOf` would give both of them the first
+  // one's label.
+  const playable = chords
+    .map((chord, i) => ({ chord, label: labels[i] ?? '' }))
+    .filter(({ chord }) => chord.root);
+
+  return (
+    <div className="diagrams">
+      <div className="diagram-head">
+        <div className="picker">
+          {(['piano', 'guitar'] as const).map((id) => (
+            <button
+              type="button"
+              key={id}
+              className={instrumentId === id ? 'on' : ''}
+              onClick={() => setInstrumentId(id)}
+            >
+              {id}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {playable.length === 0 ? (
+        <p className="diagram-empty">No chord here.</p>
+      ) : (
+        <div className="chord-row">
+          {playable.map(({ chord, label }, i) => (
+            <OneChord
+              key={`${label}-${i}`}
+              chord={chord}
+              label={label}
+              instrument={instrument}
+            />
+          ))}
         </div>
       )}
     </div>

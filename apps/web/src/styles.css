@@ -1324,9 +1324,21 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   background: var(--chrome);
   padding: 8px 14px;
 }
-.diagrams { display: inline-flex; flex-direction: column; gap: 8px; }
+.diagrams { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .diagram-head { display: flex; align-items: center; gap: 12px; }
-.chordname { font-size: 18px; font-weight: 700; min-width: 4.5rem; }
+
+/* Every chord in the bar, in playing order. Scrolls rather than wraps: a bar
+   of four chords read left to right is the bar; stacked, it is a list. */
+.chord-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.one-chord { display: flex; flex-direction: column; gap: 6px; flex: 0 0 auto; }
+.one-chord-head { display: flex; align-items: baseline; gap: 8px; }
+.chordname { font-size: 18px; font-weight: 700; }
 .picker { display: flex; gap: 4px; }
 .picker button,
 .variant {

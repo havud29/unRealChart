@@ -527,12 +527,19 @@ export function App() {
 
   useWakeLock(player.playing);
 
-  // The diagram follows the band: whatever bar is sounding, or the first one.
-  const diagramBar = player.currentSourceBar !== null ? player.currentSourceBar : 0;
-  const diagramChord = shown?.bars[diagramBar]?.chords[0] ?? null;
-  const diagramLabel = diagramChord?.root
-    ? `${diagramChord.root}${diagramChord.quality}${diagramChord.bass ? `/${diagramChord.bass}` : ''}`
-    : '';
+  /*
+   * Which bar the diagrams follow.
+   *
+   * The sounding bar while the band plays; otherwise the bar the reader last
+   * clicked. It used to fall back to bar one, so clicking through a chart with
+   * the diagrams open showed the first chord of the tune whatever you picked —
+   * which is the one thing you already know.
+   */
+  const diagramBar = player.currentSourceBar ?? player.cuedBar ?? 0;
+  const diagramChords = shown?.bars[diagramBar]?.chords ?? [];
+  const diagramLabels = diagramChords.map((chord) =>
+    chord.root ? `${chord.root}${chord.quality}${chord.bass ? `/${chord.bass}` : ''}` : '',
+  );
 
   const structure = useMemo(() => {
     if (!model) return null;
@@ -991,7 +998,7 @@ export function App() {
 
               {showDiagrams ? (
                 <div className="diagram-dock">
-                  <Diagrams chord={diagramChord} label={diagramLabel} />
+                  <Diagrams chords={diagramChords} labels={diagramLabels} />
                 </div>
               ) : null}
 
