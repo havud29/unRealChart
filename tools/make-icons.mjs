@@ -16,9 +16,12 @@ import { fileURLToPath } from 'node:url';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '..', 'apps', 'web', 'public');
 
-const SLATE = [0x1b, 0x27, 0x30];
-const INK = [0xe6, 0xe3, 0xda];
-const ACCENT = [0x5c, 0xc4, 0xb2];
+// The app's own colours: warm near-black ground, paper barlines, and the
+// accent on the first beat. These were the retired slate and teal, which left
+// the installed icon disagreeing with both the app and the tab icon.
+const SLATE = [0x23, 0x20, 0x1c];
+const INK = [0xfa, 0xf9, 0xf5];
+const ACCENT = [0xd9, 0x77, 0x57];
 
 function crc32(buf) {
   let c = ~0;
