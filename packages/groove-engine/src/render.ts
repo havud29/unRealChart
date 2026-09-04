@@ -7,6 +7,7 @@ import { COMP_PATTERNS, DRUM_PATTERNS, SECTION_ACCENT, fitPattern } from './patt
 import type {
   BassPart,
   CompPart,
+  CompPattern,
   DrumPart,
   DrumVoice,
   GroovePack,
@@ -177,11 +178,50 @@ export function renderGroove(
 
     // --- comping ---------------------------------------------------------
     for (const part of compParts) {
+      /*
+       * Comping is phrased, not sampled.
+       *
+       * Picking a rhythm per bar at random gives a part with no memory: it
+       * never states a phrase, never answers one, and never drives into the
+       * next. Players think in two- and four-bar shapes, so the position in
+       * the phrase decides what kind of rhythm is wanted -- one that lands on
+       * the downbeat to open, one that pushes late to close -- and the choice
+       * within that kind stays random so it does not become a loop.
+       */
+      const phrasePos = index % 4;
+      const vocabulary = part.patterns
+        .map((id) => COMP_PATTERNS[id])
+        .filter((p): p is CompPattern => p !== undefined);
+      if (vocabulary.length === 0) continue;
+
+      const wanted =
+        phrasePos === 0
+          ? vocabulary.filter((p) => p.anchored)
+          : phrasePos === 3
+            ? vocabulary.filter((p) => p.pushes)
+            : vocabulary;
+      const pool = wanted.length > 0 ? wanted : vocabulary;
+
       const patternId =
-        random.pickAvoiding(part.patterns, lastPattern.get(part.id)) ?? part.patterns[0]!;
+        random.pickAvoiding(
+          pool.map((p) => p.id),
+          lastPattern.get(part.id),
+        ) ?? pool[0]!.id;
       lastPattern.set(part.id, patternId);
       const pattern = COMP_PATTERNS[patternId];
       if (!pattern) continue;
+
+      /*
+       * Laying out.
+       *
+       * Space is part of the vocabulary -- a bar of nothing is a phrase mark,
+       * not a gap. It only happens inside a phrase, never at the start of one
+       * and never over a section change, where the band has to state where it
+       * is. Silence chosen a bar at a time reads as a decision; silence
+       * scattered a hit at a time reads as a fault.
+       */
+      const mayRest = phrasePos !== 0 && bar.section === null;
+      if (mayRest && random.chance((1 - part.density) * 0.55)) continue;
 
       // Where each chord starts, so a stab lands on whatever is sounding.
       const starts: number[] = [];
@@ -192,7 +232,9 @@ export function renderGroove(
       }
 
       for (const hit of fitPattern(pattern.hits, barBeats)) {
-        if (!random.chance(part.density)) continue;
+        // Density thins the decoration and leaves the skeleton, rather than
+        // deleting whichever hits the dice happened to land on.
+        if (hit.optional && !random.chance(part.density)) continue;
 
         let chordIndex = 0;
         for (let c = 0; c < bar.chords.length; c++) if (starts[c]! <= hit.beat) chordIndex = c;
@@ -223,16 +265,30 @@ export function renderGroove(
           ? msAt(entry, 0, barBeats) - (0.5 / barBeats) * entry.durationMs
           : msAt(entry, Math.max(0, beat), barBeats);
 
-        for (const midi of notes) {
+        /*
+         * Weight the voices.
+         *
+         * Struck at one velocity a four-note voicing is a block -- the sound
+         * of a machine pressing four keys at once. A hand does not do that:
+         * the top note carries the line and the inner voices sit under it, so
+         * the chord has a shape and a direction. The spread is small on
+         * purpose; more than this and the inner voices stop supporting.
+         */
+        const top = notes.length - 1;
+        notes.forEach((midi, voiceIndex) => {
+          const lean = top === 0 ? 1 : 0.84 + 0.16 * (voiceIndex / top);
           emit({
             part: part.id,
             instrument: part.instrument,
             midi,
-            startMs: Math.max(0, startMs),
+            // A hand does not land four notes on the same microsecond either.
+            startMs: Math.max(0, startMs + random.jitter(pack.humanize.time) * 4),
             durationMs: (hit.durationBeats / barBeats) * entry.durationMs,
-            velocity: clamp(hit.velocity * part.gain + random.jitter(pack.humanize.velocity)),
+            velocity: clamp(
+              hit.velocity * part.gain * lean + random.jitter(pack.humanize.velocity),
+            ),
           });
-        }
+        });
       }
     }
   });

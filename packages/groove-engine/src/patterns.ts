@@ -448,25 +448,96 @@ export const SECTION_ACCENT: DrumPattern = {
 };
 
 export const COMP_PATTERNS: Readonly<Record<string, CompPattern>> = {
-  // The Charleston: beat 1 and the and-of-2. The bedrock of jazz comping.
+  /*
+   * The Charleston: beat 1 and the and-of-2.
+   *
+   * A dotted quarter followed by an eighth, so the two attacks are 1.5 beats
+   * apart -- beats 0 and 1.5. It was written here as 0 and 2.5, which is beat 1
+   * and the and-of-*3*: a different rhythm, and the reason the comping did not
+   * sound like comping. This is the figure everything else is measured against.
+   */
   charleston: {
     id: 'charleston',
     beats: 4,
+    anchored: true,
     hits: [
       { beat: 0, durationBeats: 1.4, velocity: 0.62 },
-      { beat: 2.5, durationBeats: 1.2, velocity: 0.55 },
+      { beat: 1.5, durationBeats: 1.4, velocity: 0.55 },
     ],
   },
+
+  /*
+   * The mirrored Charleston: the downbeat, then the and-of-3.
+   *
+   * Late in the bar the syncopation drives into the next downbeat rather than
+   * settling, which is what makes it a phrase ending rather than a phrase.
+   */
+  'charleston-mirror': {
+    id: 'charleston-mirror',
+    beats: 4,
+    anchored: true,
+    pushes: true,
+    hits: [
+      { beat: 0, durationBeats: 1.2, velocity: 0.6 },
+      { beat: 2.5, durationBeats: 1.4, velocity: 0.58 },
+    ],
+  },
+
+  /*
+   * Red Garland: the anticipated heavy beats, 2& and 4&.
+   *
+   * Nothing on a downbeat at all. It swings hard and stays out of a soloist's
+   * way, which is why it is the one to reach for behind a busy line.
+   */
+  garland: {
+    id: 'garland',
+    beats: 4,
+    pushes: true,
+    hits: [
+      { beat: 1.5, durationBeats: 1.4, velocity: 0.58 },
+      { beat: 3.5, durationBeats: 0.9, velocity: 0.52 },
+    ],
+  },
+
+  /*
+   * A longer phrase: the bar stated, answered, and pushed out of.
+   *
+   * The middle hit is decoration -- thinner comping drops it and leaves the
+   * Charleston-into-the-next-bar skeleton behind.
+   */
+  'long-phrase': {
+    id: 'long-phrase',
+    beats: 4,
+    anchored: true,
+    pushes: true,
+    hits: [
+      { beat: 0, durationBeats: 1.4, velocity: 0.6 },
+      { beat: 1.5, durationBeats: 0.9, velocity: 0.5, optional: true },
+      { beat: 3.5, durationBeats: 1, velocity: 0.56 },
+    ],
+  },
+
+  /* Just the push: silence, then a shove into the next bar. */
+  'push-only': {
+    id: 'push-only',
+    beats: 4,
+    pushes: true,
+    hits: [{ beat: 3.5, durationBeats: 1.1, velocity: 0.55 }],
+  },
+  /** Kept so older packs naming it still resolve; the figure is Garland's. */
   'and-of-2': {
     id: 'and-of-2',
     beats: 4,
+    pushes: true,
     hits: [
-      { beat: 1.5, durationBeats: 1.6, velocity: 0.58 },
-      { beat: 3.5, durationBeats: 0.8, velocity: 0.5 },
+      { beat: 1.5, durationBeats: 1.4, velocity: 0.58 },
+      { beat: 3.5, durationBeats: 0.9, velocity: 0.52 },
     ],
   },
+
   'sparse-long': {
     id: 'sparse-long',
+    anchored: true,
     beats: 4,
     hits: [{ beat: 0, durationBeats: 3.6, velocity: 0.5 }],
   },

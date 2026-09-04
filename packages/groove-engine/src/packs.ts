@@ -50,9 +50,13 @@ export const MEDIUM_SWING: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.8,
       voicing: 'rootless',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
-      patterns: ['charleston', 'and-of-2', 'sparse-long', 'off-beats'],
+      high: note('C', 5),
+      patterns: ['charleston', 'charleston-mirror', 'garland', 'long-phrase', 'sparse-long'],
       density: 0.62,
       anticipate: 0.3,
     },
@@ -95,8 +99,12 @@ export const JAZZ_WALTZ: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.8,
       voicing: 'rootless',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
+      high: note('C', 5),
       patterns: ['waltz-comp'],
       density: 0.6,
       anticipate: 0.2,
@@ -140,9 +148,13 @@ export const BALLAD: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.75,
       voicing: 'rootless',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
-      patterns: ['sparse-long', 'charleston'],
+      high: note('C', 5),
+      patterns: ['sparse-long', 'charleston', 'charleston-mirror'],
       density: 0.4,
       anticipate: 0.15,
     },
@@ -276,9 +288,13 @@ export const UP_TEMPO_SWING: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.78,
       voicing: 'rootless',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
-      patterns: ['charleston', 'sparse-long', 'and-of-2'],
+      high: note('C', 5),
+      patterns: ['charleston', 'charleston-mirror', 'garland', 'sparse-long'],
       density: 0.45,
       anticipate: 0.35,
     },
@@ -321,9 +337,13 @@ export const TWO_FEEL: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.78,
       voicing: 'rootless',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
-      patterns: ['charleston', 'sparse-long'],
+      high: note('C', 5),
+      patterns: ['charleston', 'charleston-mirror', 'long-phrase', 'sparse-long'],
       density: 0.5,
       anticipate: 0.25,
     },
@@ -366,8 +386,12 @@ export const EVEN_EIGHTHS: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.8,
       voicing: 'quartal',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
+      high: note('C', 5),
       patterns: ['off-beats', 'sparse-long'],
       density: 0.55,
       anticipate: 0.2,
@@ -447,9 +471,13 @@ export const SECOND_LINE: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.8,
       voicing: 'closed',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
-      patterns: ['charleston', 'off-beats'],
+      high: note('C', 5),
+      patterns: ['charleston', 'charleston-mirror', 'push-only', 'off-beats'],
       density: 0.6,
       anticipate: 0.25,
     },
@@ -537,8 +565,12 @@ export const AFRO: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.8,
       voicing: 'quartal',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
+      high: note('C', 5),
       patterns: ['twelve-eight'],
       density: 0.7,
       anticipate: 0.1,
@@ -582,8 +614,12 @@ export const BOLERO: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.78,
       voicing: 'closed',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
+      high: note('C', 5),
       patterns: ['bolero-comp', 'montuno'],
       density: 0.65,
       anticipate: 0.1,
@@ -674,8 +710,12 @@ export const SHUFFLE: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.75,
       voicing: 'closed',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
+      high: note('C', 5),
       patterns: ['shuffle-comp'],
       density: 0.6,
       anticipate: 0.1,
@@ -809,8 +849,12 @@ export const SLOW_ROCK: GroovePack = {
       instrument: 'acoustic-piano',
       gain: 0.75,
       voicing: 'closed',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
+      high: note('C', 5),
       patterns: ['twelve-eight', 'pop-pads'],
       density: 0.7,
       anticipate: 0.1,
@@ -854,8 +898,12 @@ export const SOUL: GroovePack = {
       instrument: 'electric-piano',
       gain: 0.75,
       voicing: 'rootless',
+      // The pianist's rule of thumb: the lowest note of a rootless voicing sits
+      // between C3 and middle C, and the top note between middle C and C5.
+      // Capped at A4 the hand was pushed down into the register where four
+      // notes inside an octave turn to mud.
       low: note('C', 3),
-      high: note('A', 4),
+      high: note('C', 5),
       patterns: ['soul-pads', 'off-beats'],
       density: 0.6,
       anticipate: 0.15,

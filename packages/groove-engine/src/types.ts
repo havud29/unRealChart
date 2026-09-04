@@ -61,12 +61,36 @@ export interface CompHit {
   beat: number;
   durationBeats: number;
   velocity: number;
+  /**
+   * A hit that thinner comping drops first.
+   *
+   * Density used to be a coin flip on every hit, which does not thin a rhythm
+   * so much as shred it: the Charleston with its downbeat missing is not a
+   * sparser Charleston, it is a different and worse rhythm. Marking which hits
+   * are the skeleton and which are decoration means turning the density down
+   * leaves something a player would recognise.
+   */
+  optional?: boolean;
 }
 
 export interface CompPattern {
   id: string;
   beats: number;
   hits: CompHit[];
+  /**
+   * Lands on the downbeat, so it states the bar.
+   *
+   * A phrase wants one of these at its start; four bars that all begin off the
+   * beat stop reading as syncopation and start reading as lost.
+   */
+  anchored?: boolean;
+  /**
+   * Ends late in the bar, driving into the next.
+   *
+   * What a comping player reaches for at the end of a phrase, and the reason
+   * `3&` and `4&` are worth having as their own rhythms.
+   */
+  pushes?: boolean;
 }
 
 export type BassStyle =
