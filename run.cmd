@@ -9,7 +9,8 @@ rem    run              start the web app (installs dependencies first run)
 rem    run test         run the test suite
 rem    run test watch   run the tests in watch mode
 rem    run check        typecheck every package
-rem    run fixtures     download the community test corpus
+rem    run fixtures     download the community test corpus
+rem    run sounds       download the sampled instruments
 rem    run chart <file> [title]   print a parsed chart as text
 rem    run build        production build into apps/web/dist
 rem    run shot [file]  screenshot the running app (default screenshot.png)
@@ -44,6 +45,8 @@ if /i "%COMMAND%"=="dev" goto :dev
 if /i "%COMMAND%"=="test" goto :test
 if /i "%COMMAND%"=="check" goto :check
 if /i "%COMMAND%"=="fixtures" goto :fixtures
+
+if /i "%COMMAND%"=="sounds" goto :sounds
 if /i "%COMMAND%"=="chart" goto :chart
 if /i "%COMMAND%"=="build" goto :build
 if /i "%COMMAND%"=="shot" goto :shot
@@ -52,7 +55,7 @@ if /i "%COMMAND%"=="icons" goto :icons
 
 echo.
 echo   Unknown command "%COMMAND%".
-echo   Try: run ^| run test ^| run check ^| run fixtures ^| run chart ^<file^> ^| run build ^| run shot ^| run audio
+echo   Try: run ^| run test ^| run check ^| run fixtures ^| run sounds ^| run chart ^<file^> ^| run build ^| run shot ^| run audio ^| run icons
 echo.
 exit /b 1
 
@@ -78,6 +81,10 @@ exit /b %errorlevel%
 
 :fixtures
 call npm run fixtures:fetch
+exit /b %errorlevel%
+
+:sounds
+call npm run sounds:fetch
 exit /b %errorlevel%
 
 :chart
