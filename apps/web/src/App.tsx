@@ -13,10 +13,10 @@ import {
 } from '@unrealchart/song-model';
 import type { InstrumentKey } from '@unrealchart/song-model';
 import { PACKS, toMidiFile } from '@unrealchart/groove-engine';
-import { Chart } from './Chart.js';
+import { Chart, ZOOM_STEPS, stepZoom } from './Chart.js';
 import { DEFAULT_SETTINGS, usePlayer } from './usePlayer.js';
 import type { PlayerSettings } from './usePlayer.js';
-import { createLibrary } from './storage.js';
+import { ZOOM_SETTING, createLibrary } from './storage.js';
 import type { LibraryEntry } from './storage.js';
 import { DEFAULT_LIBRARY, SEED_SETTING, fetchDefaultLibrary } from './defaultLibrary.js';
 import { NEW_CHART_TITLE, blankSong } from './newChart.js';
@@ -191,6 +191,11 @@ export function App() {
   // The three page treatments the Mac screenshots show. This is the paper, and
   // it is independent of the app's own light/dark theme.
   const [paper, setPaper] = useState<'white' | 'cream' | 'black'>('white');
+  /**
+   * Page zoom. Remembered across reloads, because a browser's zoom is: it is a
+   * decision about your eyes and your screen, not about this song.
+   */
+  const [zoom, setZoom] = useState(1);
   const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>('auto');
   const [marker, setMarker] = useState<'yellow' | 'red' | 'green' | 'hidden'>('yellow');
   const [highlightMarks, setHighlightMarks] = useState(true);
@@ -256,6 +261,35 @@ export function App() {
     if (!restored) return;
     void seed();
   }, [restored, seed]);
+
+  // Until the stored zoom has been read, do not write one back: the first
+  // render holds the default, and saving that would overwrite what is on disk
+  // with 100% every time the app starts.
+  const zoomLoaded = useRef(false);
+
+  useEffect(() => {
+    void (async () => {
+      const stored = await library.getSetting<number>(ZOOM_SETTING);
+      if (typeof stored === 'number' && stored > 0) setZoom(stored);
+      zoomLoaded.current = true;
+    })();
+  }, [library]);
+
+  useEffect(() => {
+    if (!zoomLoaded.current) return;
+    void library.setSetting(ZOOM_SETTING, zoom);
+  }, [zoom, library]);
+
+  /**
+   * Step the zoom.
+   *
+   * Functional, so a held key accumulates. Reading `zoom` from the handler's
+   * closure meant three presses in one tick all stepped from the same starting
+   * value and landed one step away instead of three.
+   */
+  const nudgeZoom = useCallback((direction: 1 | -1) => {
+    setZoom((current) => stepZoom(current, direction));
+  }, []);
 
   /**
    * Start a new chart.
@@ -481,6 +515,27 @@ export function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [player, bpm]);
+
+  // Zoom on the browser's own keys. The chart is the page here, so taking them
+  // over is what a reader expects; the browser's own zoom would scale the
+  // panels too and leave the chart the same size relative to them.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (!event.ctrlKey && !event.metaKey) return;
+      if (event.key === '=' || event.key === '+') {
+        event.preventDefault();
+        nudgeZoom(1);
+      } else if (event.key === '-' || event.key === '_') {
+        event.preventDefault();
+        nudgeZoom(-1);
+      } else if (event.key === '0') {
+        event.preventDefault();
+        setZoom(1);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [nudgeZoom]);
 
   const sourceName = source.startsWith('pl:') ? source.slice(3) : 'Library';
 
@@ -769,6 +824,7 @@ export function App() {
                     model={shown}
                     showBeats={showBeats}
                     playingBar={marker === 'hidden' ? null : player.currentSourceBar}
+                    zoom={zoom}
                     cuedBar={player.cuedBar}
                     onSeek={(bar) => player.seekToBar(bar)}
                     onSelectRange={(fromBar, toBar) =>
@@ -1001,6 +1057,34 @@ export function App() {
 
       {menu === 'settings' ? (
         <div className="popover pop-settings">
+          <p className="pop-group">Page size</p>
+          <div className="pop-zoom">
+            <button
+              type="button"
+              onClick={() => nudgeZoom(-1)}
+              disabled={zoom <= ZOOM_STEPS[0]!}
+              title="Smaller (Ctrl -)"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="pop-zoom-now"
+              onClick={() => setZoom(1)}
+              title="Reset to fit (Ctrl 0)"
+            >
+              {Math.round(zoom * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => nudgeZoom(1)}
+              disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]!}
+              title="Larger (Ctrl +)"
+            >
+              +
+            </button>
+          </div>
+
           <p className="pop-group">Paper</p>
           <div className="pop-seg">
             {(['white', 'cream', 'black'] as const).map((t) => (

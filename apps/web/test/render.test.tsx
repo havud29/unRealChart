@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { parsePlaylist } from '@unrealchart/ireal-format';
 import { buildSongModel, transposeModel } from '@unrealchart/song-model';
-import { Chart, fitScale, sheetMetrics } from '../src/Chart.js';
+import { Chart, ZOOM_STEPS, fitScale, sheetMetrics, stepZoom } from '../src/Chart.js';
 
 /**
  * Smoke test for the chart renderer: a real parsed chart in, real markup out.
@@ -288,5 +288,30 @@ describe('fitting a long symbol to its slot', () => {
 
   it('never grows a symbol', () => {
     expect(fitScale(200, 40)).toBe(1);
+  });
+});
+
+describe('page zoom', () => {
+  it('walks the ladder up and down', () => {
+    expect(stepZoom(1, 1)).toBe(1.1);
+    expect(stepZoom(1, -1)).toBe(0.9);
+    expect(stepZoom(0.9, 1)).toBe(1);
+  });
+
+  it('stops at both ends rather than running off', () => {
+    const lowest = ZOOM_STEPS[0]!;
+    const highest = ZOOM_STEPS[ZOOM_STEPS.length - 1]!;
+    expect(stepZoom(lowest, -1)).toBe(lowest);
+    expect(stepZoom(highest, 1)).toBe(highest);
+  });
+
+  it('finds the next step from a value that is not on the ladder', () => {
+    // A zoom restored from an older ladder must still step sensibly.
+    expect(stepZoom(0.95, 1)).toBe(1);
+    expect(stepZoom(0.95, -1)).toBe(0.9);
+  });
+
+  it('includes 100%, so there is something to reset to', () => {
+    expect(ZOOM_STEPS).toContain(1);
   });
 });

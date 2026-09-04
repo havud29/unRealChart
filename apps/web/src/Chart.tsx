@@ -83,6 +83,24 @@ export function fitScale(room: number, wanted: number): number {
   return Math.max(MIN_FIT, (room * FIT_MARGIN) / wanted);
 }
 
+/**
+ * The zoom ladder, in the steps a browser uses.
+ *
+ * Zoom multiplies the fitted cell rather than replacing it, so the page keeps
+ * its proportions at every step -- 120% is the same sheet, larger, and the
+ * stage scrolls to it. Everything on the page is a multiple of one cell, so
+ * one number is all that has to change.
+ */
+export const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2] as const;
+
+/** The next step up or down the ladder from wherever the zoom currently is. */
+export function stepZoom(zoom: number, direction: 1 | -1): number {
+  const steps = ZOOM_STEPS;
+  if (direction > 0) return steps.find((step) => step > zoom + 0.001) ?? steps[steps.length - 1]!;
+  const lower = steps.filter((step) => step < zoom - 0.001);
+  return lower[lower.length - 1] ?? steps[0]!;
+}
+
 /** Below this the page stops shrinking and the stage scrolls instead. */
 const MIN_CELL = 13;
 /** Above this it stops growing, so a huge display does not give huge chords. */
@@ -366,6 +384,11 @@ export interface ChartProps {
    * Drawn only while stopped -- once playing, the playhead says where we are.
    */
   cuedBar?: number | null;
+  /**
+   * Page zoom, as a multiplier on the fitted size. 1 fits the stage; above
+   * that the page grows and the stage scrolls, as a browser's zoom does.
+   */
+  zoom?: number;
   /** Bar range being looped, drawn as a tint over the chart. */
   loop?: { fromBar: number; toBar: number } | null;
 }
@@ -393,6 +416,7 @@ export function Chart({
   showBeats = false,
   playingBar = null,
   cuedBar = null,
+  zoom = 1,
   onSeek,
   onSelectRange,
   loop = null,
@@ -424,14 +448,17 @@ export function Chart({
       if (height <= 0 || width <= 0) return;
       const byHeight = height / page;
       const byWidth = width / (COLUMNS + PAD_X * 2);
-      setCell(Math.max(MIN_CELL, Math.min(MAX_CELL, Math.min(byHeight, byWidth))));
+      // Clamp the fit, then zoom: the limits keep a page readable at 100%, and
+      // zoom is the reader overriding that on purpose.
+      const fitted = Math.max(MIN_CELL, Math.min(MAX_CELL, Math.min(byHeight, byWidth)));
+      setCell(fitted * zoom);
     };
 
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(element);
     return () => observer.disconnect();
-  }, [page]);
+  }, [page, zoom]);
 
   /*
    * Fit the few symbols that genuinely do not fit.

@@ -12,6 +12,9 @@ import { parsePlaylist } from '@unrealchart/ireal-format';
  * keeping both.
  */
 
+/** Keys in the settings store, so they are named in one place. */
+export const ZOOM_SETTING = 'pageZoom';
+
 const DB_NAME = 'unrealchart';
 const DB_VERSION = 1;
 const SONGS = 'songs';

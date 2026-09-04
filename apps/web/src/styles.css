@@ -1203,6 +1203,27 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   color: var(--ink-2);
 }
 .pop-seg { display: flex; flex-wrap: wrap; gap: 4px; }
+
+/* Zoom: a stepper, the shape a browser uses. The reading stays on the middle
+   button, which is also the reset. */
+.pop-zoom { display: flex; align-items: stretch; gap: 4px; }
+.pop-zoom button {
+  padding: 3px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.pop-zoom button:hover:not(:disabled) { border-color: var(--accent-text); color: var(--accent-text); }
+.pop-zoom button:disabled { opacity: 0.4; cursor: default; }
+.pop-zoom-now {
+  flex: 1;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
 .pop-seg button,
 .pop-share button,
 .pop-style button,
