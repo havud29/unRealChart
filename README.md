@@ -80,17 +80,6 @@ synthesised — the soundfont has no GM kit, and they hold up best anyway.
 Samples: **FluidR3_GM** via [midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts),
 **CC-BY 3.0**. Attribution is a condition; `sounds/CREDITS.md` carries it.
 
-## Hosting
-
-Static, so GitHub Pages serves it free. Pushing to `master` typechecks, tests, fetches
-the instruments and publishes — see `.github/workflows/pages.yml`. Enable it once in
-**Settings → Pages → Source → GitHub Actions**; the site lands at
-`https://<user>.github.io/unRealChart/`.
-
-A project site is served under the repo name, which is why `base` is set in
-`vite.config.ts` and the sound banks resolve against it. For a custom domain serving
-from the root, build with `BASE_PATH=/`.
-
 ## Scope, deliberately
 
 - **Import-only and local-first.** No hosted chart database. Progressions are not
