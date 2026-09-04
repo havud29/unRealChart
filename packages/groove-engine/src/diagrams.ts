@@ -211,6 +211,77 @@ export function pianoVoicing(root: number, quality: string, bass?: number): numb
   return [...new Set(notes)].sort((a, b) => a - b);
 }
 
+const LETTERS = ['C', 'D', 'E', 'F', 'G', 'A', 'B'];
+const LETTER_PITCH = [0, 2, 4, 5, 7, 9, 11];
+
+/**
+ * Spell one note as a letter and accidental, given the degree it is playing.
+ *
+ * The degree is what makes this musical rather than arithmetic. The third of
+ * C minor is an E of some kind -- E flat -- and never a D sharp, because a
+ * chord is built in thirds and each degree takes the next letter but one.
+ * Spelling by pitch class alone gives `C D# G A#`, which is the same sound
+ * and the wrong chord on the page.
+ */
+function spell(rootLetterIndex: number, rootPitch: number, degree: number, semitones: number) {
+  // Degrees run 1 3 5 7 9 11 13; each is two letters on from the last.
+  const letterIndex = (rootLetterIndex + (degree - 1)) % 7;
+  const letter = LETTERS[letterIndex]!;
+  const natural = LETTER_PITCH[letterIndex]!;
+  const wanted = (rootPitch + semitones) % 12;
+
+  // Nearest signed distance, so B against C reads as -1 rather than +11.
+  let offset = (((wanted - natural) % 12) + 12) % 12;
+  if (offset > 6) offset -= 12;
+
+  const accidental =
+    offset === 0 ? '' : offset > 0 ? '♯'.repeat(offset) : '♭'.repeat(-offset);
+  return letter + accidental;
+}
+
+/**
+ * The notes of a chord, named and in order.
+ *
+ * For reading rather than for playing: `C-7` is `C E♭ G B♭`. A slash bass is
+ * put first, because that is where it sounds and how the symbol reads.
+ */
+export function chordNoteNames(root: number, quality: string, bass?: number): string[] {
+  const { third, fifth, seventh, tensions } = chordTones(quality);
+
+  // Which letter the root is spelled with. Pitch class alone cannot say
+  // whether 6 is F sharp or G flat, so prefer the flat spelling, which is what
+  // jazz charts use for every one of them except F sharp.
+  const rootLetterIndex = LETTERS.indexOf(
+    ['C', 'D', 'E', 'F', 'G', 'A', 'B'][[0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6][root % 12]!]!,
+  );
+  const rootPitch = root % 12;
+
+  const degrees: Array<[number, number]> = [[1, 0]];
+  if (third !== null) degrees.push([3, third]);
+  degrees.push([5, fifth]);
+  if (seventh !== null) degrees.push([7, seventh]);
+  for (const tension of tensions) {
+    const degree = tension <= 15 ? 9 : tension <= 18 ? 11 : 13;
+    degrees.push([degree, tension]);
+  }
+
+  const names = degrees.map(([degree, semitones]) =>
+    spell(rootLetterIndex, rootPitch, degree, semitones),
+  );
+
+  if (bass !== undefined && bass % 12 !== rootPitch) {
+    const bassIndex = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6][bass % 12]!;
+    const bassNatural = LETTER_PITCH[bassIndex]!;
+    let offset = ((((bass % 12) - bassNatural) % 12) + 12) % 12;
+    if (offset > 6) offset -= 12;
+    const accidental =
+      offset === 0 ? '' : offset > 0 ? '♯'.repeat(offset) : '♭'.repeat(-offset);
+    names.unshift(LETTERS[bassIndex]! + accidental);
+  }
+
+  return names;
+}
+
 /** Pitch classes a chord contains, for highlighting a keyboard. */
 export function pitchClassesOf(root: number, quality: string, bass?: number): Set<number> {
   const classes = new Set(chordTones(quality).intervals.map((i) => (root + i) % 12));

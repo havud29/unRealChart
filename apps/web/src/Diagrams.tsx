@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { BarChord } from '@unrealchart/song-model';
-import { GUITAR, UKULELE, fingerings, pitchClassesOf } from '@unrealchart/groove-engine';
+import { GUITAR, chordNoteNames, fingerings, pitchClassesOf } from '@unrealchart/groove-engine';
 import type { Instrument } from '@unrealchart/groove-engine';
 
 /**
@@ -145,15 +145,14 @@ export interface DiagramsProps {
 }
 
 export function Diagrams({ chord, label }: DiagramsProps) {
-  const [instrumentId, setInstrumentId] = useState<'piano' | 'guitar' | 'ukulele'>('guitar');
+  const [instrumentId, setInstrumentId] = useState<'piano' | 'guitar'>('guitar');
   const [variant, setVariant] = useState(0);
 
   const root = pitchClass(chord?.root ?? null);
   const bass = pitchClass(chord?.bass ?? null);
   const quality = chord?.quality ?? '';
 
-  const instrument: Instrument | null =
-    instrumentId === 'guitar' ? GUITAR : instrumentId === 'ukulele' ? UKULELE : null;
+  const instrument: Instrument | null = instrumentId === 'guitar' ? GUITAR : null;
 
   const shapes = useMemo(() => {
     if (root === null || !instrument) return [];
@@ -172,7 +171,7 @@ export function Diagrams({ chord, label }: DiagramsProps) {
       <div className="diagram-head">
         <span className="chordname">{label || '—'}</span>
         <div className="picker">
-          {(['piano', 'guitar', 'ukulele'] as const).map((id) => (
+          {(['piano', 'guitar'] as const).map((id) => (
             <button
               type="button"
               key={id}
@@ -206,7 +205,17 @@ export function Diagrams({ chord, label }: DiagramsProps) {
           <p className="diagram-empty">No playable shape for this chord.</p>
         )
       ) : (
-        <Keyboard classes={classes} root={bass ?? root} />
+        <div className="piano-diagram">
+          <Keyboard classes={classes} root={bass ?? root} />
+          {/* The keys say where the hand goes; the names say what it is. */}
+          <p className="note-names">
+            {chordNoteNames(root, quality, bass ?? undefined).map((name, i) => (
+              <span className="note-name" key={i}>
+                {name}
+              </span>
+            ))}
+          </p>
+        </div>
       )}
     </div>
   );

@@ -60,6 +60,7 @@ export {
   GUITAR,
   INSTRUMENTS,
   UKULELE,
+  chordNoteNames,
   fingerings,
   pianoVoicing,
   pitchClassesOf,

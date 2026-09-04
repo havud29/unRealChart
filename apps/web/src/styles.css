@@ -1240,6 +1240,30 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
 .stepper.changed .stepper-value,
 .p-style.changed .p-style-name { position: relative; }
 
+/* The notes of the chord, spelled out under the keyboard. */
+.piano-diagram { display: flex; flex-direction: column; gap: 8px; }
+.note-names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+}
+.note-name {
+  padding: 2px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 5px;
+  background: var(--surface);
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+/* The first is the note the chord sounds from — its root, or a slash bass. */
+.note-name:first-child {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
 .pop-seg { display: flex; flex-wrap: wrap; gap: 4px; }
 
 /* Zoom: a stepper, the shape a browser uses. The reading stays on the middle
