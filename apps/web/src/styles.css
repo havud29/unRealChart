@@ -725,9 +725,15 @@ button, input, select { font: inherit; }
 }
 .chord {
   position: relative;
-  /* One size for everything, except a symbol measured too wide for its slot:
-     see the fit pass in Chart.tsx. --fit is 1 for all but a handful. */
-  font-size: calc(var(--cell) * 0.95 * var(--fit, 1));
+  /*
+   * One size for everything, times two multipliers that mean different things.
+   *
+   * --chord-size is the reader's choice of how large chords sit within the
+   * page, and applies to every chord equally. --fit is the per-symbol
+   * correction for the handful measured too wide for their slot, and is 1 for
+   * all the rest. See the fit pass in Chart.tsx.
+   */
+  font-size: calc(var(--cell) * 0.95 * var(--chord-size, 1) * var(--fit, 1));
   /* Not bold. At chart size a regular weight is easier to read across a room
      than a heavy one, which fills its own counters in. */
   font-weight: 400;
@@ -737,7 +743,7 @@ button, input, select { font: inherit; }
   min-width: 0;
 }
 /* The one size that does change, because the chart asked for it. */
-.chord.small { font-size: calc(var(--cell) * 0.7 * var(--fit, 1)); }
+.chord.small { font-size: calc(var(--cell) * 0.7 * var(--chord-size, 1) * var(--fit, 1)); }
 
 /*
  * A chord symbol is three sizes and two rows.

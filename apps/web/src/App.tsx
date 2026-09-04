@@ -13,10 +13,10 @@ import {
 } from '@unrealchart/song-model';
 import type { InstrumentKey } from '@unrealchart/song-model';
 import { PACKS, toMidiFile } from '@unrealchart/groove-engine';
-import { Chart, ZOOM_STEPS, stepZoom } from './Chart.js';
+import { CHORD_STEPS, Chart, ZOOM_STEPS, stepThrough, stepZoom } from './Chart.js';
 import { DEFAULT_SETTINGS, usePlayer } from './usePlayer.js';
 import type { PlayerSettings } from './usePlayer.js';
-import { ZOOM_SETTING, createLibrary } from './storage.js';
+import { CHORD_SIZE_SETTING, ZOOM_SETTING, createLibrary } from './storage.js';
 import type { LibraryEntry } from './storage.js';
 import { DEFAULT_LIBRARY, SEED_SETTING, fetchDefaultLibrary } from './defaultLibrary.js';
 import { NEW_CHART_TITLE, blankSong } from './newChart.js';
@@ -196,6 +196,8 @@ export function App() {
    * decision about your eyes and your screen, not about this song.
    */
   const [zoom, setZoom] = useState(1);
+  /** How large chords are set within the page — iReal Pro's `Aa`. */
+  const [chordSize, setChordSize] = useState(1);
   const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>('auto');
   const [marker, setMarker] = useState<'yellow' | 'red' | 'green' | 'hidden'>('yellow');
   const [highlightMarks, setHighlightMarks] = useState(true);
@@ -269,8 +271,12 @@ export function App() {
 
   useEffect(() => {
     void (async () => {
-      const stored = await library.getSetting<number>(ZOOM_SETTING);
-      if (typeof stored === 'number' && stored > 0) setZoom(stored);
+      const [storedZoom, storedChord] = await Promise.all([
+        library.getSetting<number>(ZOOM_SETTING),
+        library.getSetting<number>(CHORD_SIZE_SETTING),
+      ]);
+      if (typeof storedZoom === 'number' && storedZoom > 0) setZoom(storedZoom);
+      if (typeof storedChord === 'number' && storedChord > 0) setChordSize(storedChord);
       zoomLoaded.current = true;
     })();
   }, [library]);
@@ -279,6 +285,11 @@ export function App() {
     if (!zoomLoaded.current) return;
     void library.setSetting(ZOOM_SETTING, zoom);
   }, [zoom, library]);
+
+  useEffect(() => {
+    if (!zoomLoaded.current) return;
+    void library.setSetting(CHORD_SIZE_SETTING, chordSize);
+  }, [chordSize, library]);
 
   /**
    * Step the zoom.
@@ -289,6 +300,10 @@ export function App() {
    */
   const nudgeZoom = useCallback((direction: 1 | -1) => {
     setZoom((current) => stepZoom(current, direction));
+  }, []);
+
+  const nudgeChordSize = useCallback((direction: 1 | -1) => {
+    setChordSize((current) => stepThrough(CHORD_STEPS, current, direction));
   }, []);
 
   /**
@@ -825,6 +840,7 @@ export function App() {
                     showBeats={showBeats}
                     playingBar={marker === 'hidden' ? null : player.currentSourceBar}
                     zoom={zoom}
+                    chordSize={chordSize}
                     cuedBar={player.cuedBar}
                     onSeek={(bar) => player.seekToBar(bar)}
                     onSelectRange={(fromBar, toBar) =>
@@ -1080,6 +1096,34 @@ export function App() {
               onClick={() => nudgeZoom(1)}
               disabled={zoom >= ZOOM_STEPS[ZOOM_STEPS.length - 1]!}
               title="Larger (Ctrl +)"
+            >
+              +
+            </button>
+          </div>
+
+          <p className="pop-group">Chord size</p>
+          <div className="pop-zoom">
+            <button
+              type="button"
+              onClick={() => nudgeChordSize(-1)}
+              disabled={chordSize <= CHORD_STEPS[0]!}
+              title="Smaller chords, same page"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="pop-zoom-now"
+              onClick={() => setChordSize(1)}
+              title="Reset chord size"
+            >
+              {Math.round(chordSize * 100)}%
+            </button>
+            <button
+              type="button"
+              onClick={() => nudgeChordSize(1)}
+              disabled={chordSize >= CHORD_STEPS[CHORD_STEPS.length - 1]!}
+              title="Larger chords, same page"
             >
               +
             </button>

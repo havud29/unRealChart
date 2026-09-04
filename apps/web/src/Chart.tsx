@@ -60,13 +60,25 @@ const SYSTEM_MIN = 1.5;
 const SYSTEM_MAX = 3.2;
 
 /**
- * How far a symbol may be shrunk to fit its share of a bar.
+ * How small a symbol may end up, as a fraction of the default chord size.
  *
- * Below this it stops being readable at chart distance, and a symbol that
+ * A limit on the *final* size, not on the correction. When the reader has set
+ * chords larger, a symbol has proportionally further to shrink before it
+ * reaches the same absolute size, so the floor on the correction is this
+ * divided by the chosen chord size -- see `fitFloor`. Holding the correction
+ * at 0.72 regardless meant that turning chords up to 120% put them back into
+ * each other, because the fit was not allowed to undo what the setting did.
+ *
+ * Below this a symbol stops being readable at chart distance, and one that
  * still does not fit is better slightly overrunning its neighbour than
  * illegible -- iReal Pro lets a chord overrun a barline too.
  */
 const MIN_FIT = 0.72;
+
+/** The floor on the per-symbol correction, given the chosen chord size. */
+export function fitFloor(chordSize: number): number {
+  return MIN_FIT / (chordSize > 0 ? chordSize : 1);
+}
 
 /** Fit to this much of the slot, so a shrunk symbol still has air beside it. */
 const FIT_MARGIN = 0.92;
@@ -78,9 +90,9 @@ const FIT_MARGIN = 0.92;
  * everything that fits is left at one size, and what does not is brought down
  * to a little inside its slot but never below what stays readable.
  */
-export function fitScale(room: number, wanted: number): number {
+export function fitScale(room: number, wanted: number, floor: number = MIN_FIT): number {
   if (room <= 0 || wanted <= room + 1) return 1;
-  return Math.max(MIN_FIT, (room * FIT_MARGIN) / wanted);
+  return Math.max(floor, (room * FIT_MARGIN) / wanted);
 }
 
 /**
@@ -93,12 +105,35 @@ export function fitScale(room: number, wanted: number): number {
  */
 export const ZOOM_STEPS = [0.5, 0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2] as const;
 
-/** The next step up or down the ladder from wherever the zoom currently is. */
-export function stepZoom(zoom: number, direction: 1 | -1): number {
-  const steps = ZOOM_STEPS;
-  if (direction > 0) return steps.find((step) => step > zoom + 0.001) ?? steps[steps.length - 1]!;
-  const lower = steps.filter((step) => step < zoom - 0.001);
+/**
+ * How large the chords are set *within* the page.
+ *
+ * Distinct from zoom, and the distinction matters. Zoom scales the whole sheet
+ * -- the chords and the page grow together and nothing moves relative to
+ * anything else. This changes the chords against a page that stays put, which
+ * is how you fit a dense chart on screen or make a sparse one readable from
+ * further away. iReal Pro's `Aa` is this one.
+ *
+ * A narrower range than zoom on purpose: past these the symbols either crowd
+ * their bars or rattle around in them.
+ */
+export const CHORD_STEPS = [0.75, 0.85, 0.925, 1, 1.1, 1.2, 1.35] as const;
+
+/** The next step up or down a ladder from wherever a value currently sits. */
+export function stepThrough(
+  steps: readonly number[],
+  value: number,
+  direction: 1 | -1,
+): number {
+  if (direction > 0) {
+    return steps.find((step) => step > value + 0.001) ?? steps[steps.length - 1]!;
+  }
+  const lower = steps.filter((step) => step < value - 0.001);
   return lower[lower.length - 1] ?? steps[0]!;
+}
+
+export function stepZoom(zoom: number, direction: 1 | -1): number {
+  return stepThrough(ZOOM_STEPS, zoom, direction);
 }
 
 /** Below this the page stops shrinking and the stage scrolls instead. */
@@ -389,6 +424,11 @@ export interface ChartProps {
    * that the page grows and the stage scrolls, as a browser's zoom does.
    */
   zoom?: number;
+  /**
+   * How large chords are set within the page, as a multiplier. Independent of
+   * `zoom`: this changes the chords against a page that does not move.
+   */
+  chordSize?: number;
   /** Bar range being looped, drawn as a tint over the chart. */
   loop?: { fromBar: number; toBar: number } | null;
 }
@@ -417,6 +457,7 @@ export function Chart({
   playingBar = null,
   cuedBar = null,
   zoom = 1,
+  chordSize = 1,
   onSeek,
   onSelectRange,
   loop = null,
@@ -488,7 +529,7 @@ export function Chart({
 
       const scales: Array<[HTMLElement, number]> = [];
       for (const chord of chords) {
-        const scale = fitScale(chord.clientWidth, chord.scrollWidth);
+        const scale = fitScale(chord.clientWidth, chord.scrollWidth, fitFloor(chordSize));
         if (scale !== 1) scales.push([chord, scale]);
       }
       for (const [chord, scale] of scales) chord.style.setProperty('--fit', String(scale));
@@ -500,7 +541,9 @@ export function Chart({
     // between two sizes forever. Layout only changes when the cell or the song
     // changes, and both are dependencies here, so a pass per change is enough.
     fit();
-  }, [model, cell]);
+    // Chord size is a dependency: setting the chords larger is exactly what
+    // makes a symbol outgrow its slot, so the fit pass has to run again.
+  }, [model, cell, chordSize]);
 
   // A drag across the chart selects a range; a click that never moved is a
   // request to play from that bar.
@@ -549,6 +592,7 @@ export function Chart({
         style={
           {
             '--cell': `${cell}px`,
+            '--chord-size': chordSize,
             '--system': `${cell * system}px`,
             '--sheet': `${cell * page}px`,
           } as CSSProperties

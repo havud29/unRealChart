@@ -2,7 +2,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { parsePlaylist } from '@unrealchart/ireal-format';
 import { buildSongModel, transposeModel } from '@unrealchart/song-model';
-import { Chart, ZOOM_STEPS, fitScale, sheetMetrics, stepZoom } from '../src/Chart.js';
+import {
+  CHORD_STEPS,
+  Chart,
+  ZOOM_STEPS,
+  fitFloor,
+  fitScale,
+  sheetMetrics,
+  stepThrough,
+  stepZoom,
+} from '../src/Chart.js';
 
 /**
  * Smoke test for the chart renderer: a real parsed chart in, real markup out.
@@ -313,5 +322,74 @@ describe('page zoom', () => {
 
   it('includes 100%, so there is something to reset to', () => {
     expect(ZOOM_STEPS).toContain(1);
+  });
+});
+
+describe('chord size, which is not page zoom', () => {
+  const model = chartModel();
+
+  it('scales the chords without touching the page', () => {
+    // Zoom moves --cell, which moves the whole sheet. Chord size moves only
+    // the chords, so a dense chart can be made to fit a page that stays put.
+    const big = renderToStaticMarkup(<Chart model={model} chordSize={1.2} />);
+    expect(big).toContain('--chord-size:1.2');
+  });
+
+  it('is 1 by default, so a chart is unaffected until asked', () => {
+    expect(renderToStaticMarkup(<Chart model={model} />)).toContain('--chord-size:1');
+  });
+
+  it('keeps a narrower range than zoom', () => {
+    // Past these the symbols either crowd their bars or rattle around in them.
+    expect(CHORD_STEPS[0]).toBeGreaterThan(ZOOM_STEPS[0]!);
+    expect(CHORD_STEPS[CHORD_STEPS.length - 1]).toBeLessThan(ZOOM_STEPS[ZOOM_STEPS.length - 1]!);
+  });
+
+  it('steps and clamps like the zoom ladder', () => {
+    expect(stepThrough(CHORD_STEPS, 1, 1)).toBe(1.1);
+    expect(stepThrough(CHORD_STEPS, 1, -1)).toBe(0.925);
+    expect(stepThrough(CHORD_STEPS, CHORD_STEPS[0]!, -1)).toBe(CHORD_STEPS[0]);
+    const top = CHORD_STEPS[CHORD_STEPS.length - 1]!;
+    expect(stepThrough(CHORD_STEPS, top, 1)).toBe(top);
+  });
+
+  it('has 100% on the ladder to reset to', () => {
+    expect(CHORD_STEPS).toContain(1);
+  });
+
+  it('leaves zoom alone', () => {
+    // The two are independent: setting one must not move the other.
+    const html = renderToStaticMarkup(<Chart model={model} chordSize={1.35} zoom={1} />);
+    expect(html).toContain('--chord-size:1.35');
+    expect(stepZoom(1, 1)).toBe(1.1);
+  });
+});
+
+describe('the fit floor follows the chosen chord size', () => {
+  /**
+   * The floor limits how small a symbol may *end up*, not how far the
+   * correction may go. Holding the correction at 0.72 whatever the chord size
+   * meant that turning chords up to 120% put them back into each other: the
+   * fit was not allowed to undo what the setting had done.
+   */
+  it('lets the fit go further when chords are set larger', () => {
+    expect(fitFloor(1.2)).toBeLessThan(fitFloor(1));
+    // 0.72 of the default, reached from a 1.2x baseline.
+    expect(fitFloor(1.2) * 1.2).toBeCloseTo(fitFloor(1), 5);
+  });
+
+  it('holds the fit back when chords are already small', () => {
+    expect(fitFloor(0.75)).toBeGreaterThan(fitFloor(1));
+  });
+
+  it('bottoms out at the same absolute size whatever the setting', () => {
+    // A symbol that cannot fit lands on the same final size either way.
+    const atOne = fitScale(88, 400, fitFloor(1)) * 1;
+    const atBig = fitScale(88, 400, fitFloor(1.35)) * 1.35;
+    expect(atBig).toBeCloseTo(atOne, 5);
+  });
+
+  it('survives a nonsense chord size rather than dividing by zero', () => {
+    expect(fitFloor(0)).toBe(fitFloor(1));
   });
 });
