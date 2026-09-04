@@ -2,216 +2,111 @@
 
 A chord chart reader, editor and backing band that runs in a browser.
 
-Open the iReal Pro playlists you already have, read the chart as a page, and
-play it with a rhythm section that follows the form. Nothing is uploaded:
-your library lives in the browser, and the app works with the network off.
+Open the iReal Pro playlists you already have, read the chart as a page, and play
+it with a rhythm section that follows the form. Nothing is uploaded — your library
+lives in the browser and the app works offline.
 
-*Compatible with iReal Pro's file formats. Not affiliated with, or endorsed by,
-Technimo LLC.*
+*Compatible with iReal Pro's file formats. Not affiliated with Technimo LLC.*
 
----
-
-## Quick start
-
-On Windows, `run.cmd` is the front door. It installs dependencies on first use.
-
-```
-run                          start the app
-run test                     run the test suite  (run test watch to watch)
-run check                    typecheck everything
-run build                    production build into apps/web/dist
-run fixtures                 download the community test corpus
-run sounds                   download the sampled instruments
-run chart <file> [title]     print a parsed chart as text
-run shot [file]              screenshot the running app
-run audio [groove]           render a groove offline and measure it
-run icons                    regenerate the app icons from favicon.svg
-```
-
-Anywhere else:
+## Start
 
 ```bash
 npm install
-npm run dev --workspace @unrealchart/web
-npm test
-npm run typecheck
+npm run dev --workspace @unrealchart/web    # or: run           (Windows)
+npm test                                    # or: run test
+npm run typecheck                           # or: run check
+npm run sounds:fetch                        # recorded instruments, optional
 ```
 
-Then drop an iReal Pro `.html` or `.txt` export anywhere in the window. A new
-install with an empty library fetches the standard jazz collection once, so
-there is something to read immediately.
+Drop an iReal Pro `.html` or `.txt` export anywhere in the window. An empty library
+seeds itself once, so there is something to read immediately.
+
+`run.cmd` is the Windows front door — also `run build`, `run fixtures`,
+`run chart <file> [title]`, `run shot`, `run audio [groove]`, `run icons`.
 
 ## What it does
 
-**Reads the format properly.** Both `irealb://` and `irealbook://` URI schemes,
-HTML exports, `.txt` dumps and pasted URIs, including the positional scramble.
-Charts re-encode byte-identically, which is what makes saving an edit safe.
+- **Reads the format properly** — both URI schemes, HTML exports, `.txt` dumps,
+  pasted URIs, and the positional scramble. Re-encodes byte-identically.
+- **Draws the chart as a sheet of paper** — 16 cells across, fixed portrait shape,
+  centred. A wider window gets more margin, not a wider sheet.
+- **Plays it** — 19 grooves, walking bass, phrased comping with voice-led rootless
+  voicings, drums. Repeats, endings, D.C./D.S., Coda and Fine unroll into play order.
+- **Lets you change it** — cell-grid editor with undo and live validation. Key,
+  tempo, style and repeats are remembered per song.
+- **Goes with you** — installable, offline, exports to iReal Pro URIs and HTML,
+  MusicXML, MIDI and print.
 
-**Draws the chart as a sheet of paper.** Sixteen cells across, a fixed portrait
-shape, centred with margin either side. Give the window more width and the
-sheet does not stretch — the margin grows. The whole page derives from one
-number, the width of a cell, so its proportions cannot drift.
+## Layout
 
-**Plays it.** Nineteen grooves, a walking bass that lands on the root at every
-change, phrased piano comping with voice-led rootless voicings, and drums.
-Repeats, endings, D.C./D.S., Coda and Fine unroll into the order the band
-actually plays.
-
-**Lets you change it.** A cell-grid editor with undo, live validation, and the
-same chord symbols the page draws. Transpose for a horn, set a tempo, pick a
-style; the app remembers what you did to each song and puts it back next time.
-
-**Goes with you.** Installable, fully offline, and everything exports again —
-iReal Pro URIs and HTML, MusicXML, MIDI, and print.
-
-## How it is put together
-
-Four packages under `packages/`, and one app. Each layer is useful on its own
-and none of them know about the browser except the last two.
-
-| Path | What it does |
+| Path | What |
 |---|---|
-| `packages/ireal-format` | The URI schemes and HTML exports: unscramble, tokenize to cells, serialize back |
-| `packages/song-model` | Cells become bars: beat resolution, meter, repeats and jumps, unrolling, transposition, MusicXML |
-| `packages/groove-engine` | Bars plus a groove become note events: chord grammar, voicings, bass, drums, comping, MIDI, chord diagrams |
+| `packages/ireal-format` | URI schemes and HTML: unscramble, tokenize to cells, serialize back |
+| `packages/song-model` | Cells to bars: beats, meter, repeats and jumps, unrolling, transposition, MusicXML |
+| `packages/groove-engine` | Bars + groove to note events: chord grammar, voicings, bass, drums, comping, MIDI, diagrams |
 | `packages/audio-host` | Web Audio transport, instruments, mixer, offline render |
 | `apps/web` | The app: library, chart, editor, player, export |
-| `tools/` | Dev CLIs: fixture fetcher, chart printer, screenshots, audio checks, icons |
-| `docs/ireal-format.md` | The reverse-engineered format spec, and the living reference |
-| `PLAN.md` | The original implementation plan: scope, architecture, risks |
+| `tools/` | Fixture fetcher, chart printer, screenshots, audio checks, icons |
+| `docs/ireal-format.md` | The format spec. Read before touching `ireal-format` |
+| `PLAN.md` | Original plan: scope, architecture, risks |
 
-About 11,700 lines of TypeScript, covered by 466 tests.
+~11,700 lines of TypeScript, 469 tests.
 
-## What is verified, and how
+## Verified, not asserted
 
-Claims here are measured against 2,200 community charts across seven
-playlists, not asserted.
+Measured against 2,200 community charts across seven playlists.
 
-**The format**
+| | |
+|---|---|
+| Parsing | Every record parses; no unrecognised tokens or roots |
+| Round trip | **2,199 of 2,199 payloads re-encode byte-identically** |
+| Beats | **All 70,912 bars fill their meter exactly.** The rules are undocumented; this is how we know they hold |
+| Form | Repeats, endings, D.C./D.S., Coda and Fine unroll with every bar reachable in 2,199 of 2,200 |
+| Transposition | Spells for the destination key — C→D gives `C#ø7`, not `Dbø7` — and never drifts |
+| Audio | No clipping, bass lands on roots, comping moves under 5 semitones between chords, reproducible from a seed |
 
-- Every record parses, with no unrecognised tokens or chord roots
-- Every payload re-encodes **byte-identically** — 2,199 scrambled songs, 100%
-- Every chart re-writes to the same cells after a serialize/parse round trip
-
-**The musical model**
-
-- **Every one of 70,912 bars fills its meter exactly.** The beat-resolution
-  rules are undocumented and were derived; this is how we know they hold
-- Repeats, 1st/2nd/3rd endings, D.C./D.S., Coda and Fine unroll into a play
-  order, with every written bar reachable in 2,199 of 2,200 songs
-- Transposition spells for the destination key — C major to D major gives
-  `C#ø7`, not `Db ø7` — and never drifts, however far a chart is moved
-
-**The band**
-
-- Grooves render audibly with no clipping, verified by an offline render in a
-  real browser (`run audio`)
-- The walking bass lands on the root at every chord change and stays in register
-- Comping voice-leads: the hand moves under five semitones between chords on
-  average, rather than jumping around the keyboard
-- Renders are reproducible from a seed, so an audio regression is a readable
-  event diff rather than a waveform comparison
-
-The app is checked end to end in a real browser: it imports the 1,459-song jazz
-playlist, draws the chart, transposes it, plays with a live playhead, loops a
-bar range, keeps its library across a reload, and exports MIDI, with no console
-errors.
+End to end in a real browser: imports the 1,459-song jazz playlist, draws, transposes,
+plays with a live playhead, loops, survives a reload, exports MIDI. No console errors.
 
 ## Sound
 
-The app plays through a **synthesised** instrument set by default. It is a few
-kilobytes, needs no network, and is why the whole thing installs at under a
-megabyte and works offline the moment it loads.
+Synthesised by default — a few kilobytes, no network, working the moment it loads.
 
-**Recorded instruments are an optional upgrade:**
+`npm run sounds:fetch` adds ~3.6 MB of sampled piano, electric piano, upright and
+electric bass, and nylon guitar (git-ignored). Resolution is per instrument, so a
+partial download still helps; anything missing falls back to the synth. Drums stay
+synthesised — the soundfont has no GM kit, and they hold up best anyway.
 
-```
-npm run sounds:fetch
-```
+Samples: **FluidR3_GM** via [midi-js-soundfonts](https://github.com/gleitz/midi-js-soundfonts),
+**CC-BY 3.0**. Attribution is a condition; `sounds/CREDITS.md` carries it.
 
-That downloads about 3.6 MB of sampled piano, electric piano, upright and
-electric bass, and nylon guitar into `apps/web/public/sounds/`, which is
-git-ignored. The player decides per instrument, so a partial download still
-helps: anything without a bank falls through to the synthesised voice. The
-drums stay synthesised — the soundfont carries no General MIDI kit, and the
-drums are the part of the built-in set that holds up best.
+## Hosting
 
-Samples come from **FluidR3_GM** via [midi-js-soundfonts][sf], under
-**Creative Commons Attribution 3.0**. Attribution is a condition, and
-`sounds/CREDITS.md` is written alongside the banks to carry it.
+Static, so GitHub Pages serves it free. Pushing to `master` typechecks, tests, fetches
+the instruments and publishes — see `.github/workflows/pages.yml`. Enable it once in
+**Settings → Pages → Source → GitHub Actions**; the site lands at
+`https://<user>.github.io/unRealChart/`.
 
-[sf]: https://github.com/gleitz/midi-js-soundfonts
-
-## The library, on your machine
-
-Everything lives in IndexedDB on the device — no account, no server. Songs are
-stored with the **original payload** beside anything derived, so a parser
-improvement reaches old imports by reparsing rather than by a migration, and
-imports deduplicate on the chord payload rather than the title, because the
-same tune arrives a dozen times spelled a dozen ways.
-
-Key, tempo, style and repeats are remembered per song and restored when you
-reopen it — kept beside the song rather than written into the chart, because
-playing a tune in another key is a decision about this session, not an edit. A
-control showing something other than what the chart says is marked, so you
-cannot read a transposed chart believing it is the original.
-
-## Development
-
-```bash
-npm test              # 466 tests
-npm run typecheck     # packages and the app
-npm run fixtures:fetch
-npm run sounds:fetch
-```
-
-The corpus in `fixtures/` is user-contributed transcriptions of copyrighted
-songs. It is git-ignored and fetched on demand, and the tests that need it skip
-when it is absent, so a fresh clone still runs green.
-
-`docs/ireal-format.md` is the reference for anything about the file format, and
-is worth reading before touching `packages/ireal-format`.
+A project site is served under the repo name, which is why `base` is set in
+`vite.config.ts` and the sound banks resolve against it. For a custom domain serving
+from the root, build with `BASE_PATH=/`.
 
 ## Scope, deliberately
 
-**Import-only and local-first.** unRealChart does not host a chart database.
-Chord progressions themselves are not protectable, but a searchable library of
-transcribed charts for copyrighted songs is a different argument, and one worth
-not having.
-
-> The one exception: an empty library seeds itself once from a public
-> collection of community transcriptions, so a new install is not blank. The
-> source is a single constant in `apps/web/src/defaultLibrary.ts`, and the seed
-> never runs against a library that already holds songs.
-
-**Nothing of iReal Pro's ships here** — no samples, no fonts, no artwork, no
-branding. Their trademark appears only in statements about what this reads.
-
-**No copyleft in the dependency tree.** `ireal-musicxml` is the most complete
-open parser and is **GPL-3.0**: depending on it would relicense this whole app,
-so it was read as a reference and never linked. Same for MMA on the groove
-side. The parser lineage is the MIT-licensed `ireal-renderer` / `ireal-reader`.
-The only code shipped to a browser is React, React-DOM, and the four packages
-here.
-
-## Hosting it
-
-The app is static, so GitHub Pages serves it for nothing. Pushing to `master`
-builds and publishes it: see `.github/workflows/pages.yml`.
-
-Turn it on once, in **Settings → Pages → Source → GitHub Actions**. The site
-then lives at `https://<user>.github.io/unRealChart/`.
-
-A project site is served under the repository name rather than the domain
-root, which is why `base` is set in `apps/web/vite.config.ts` and why the
-sound banks resolve against it rather than against `/`. Publishing to a custom
-domain, which serves from the root, means setting `BASE_PATH=/` for the build.
-
-The workflow typechecks and runs the tests before publishing, and fetches the
-sampled instruments so the hosted app has them.
+- **Import-only and local-first.** No hosted chart database. Progressions are not
+  protectable, but a searchable library of transcribed charts for copyrighted songs is
+  a different argument, and one worth not having. The one exception: an empty library
+  seeds once from a public collection, via a single constant in `defaultLibrary.ts`.
+- **Nothing of iReal Pro's ships here** — no samples, fonts, artwork or branding.
+  Their trademark appears only in statements about what this reads.
+- **No copyleft in the tree.** `ireal-musicxml` is GPL-3.0 and would relicense the
+  app, so it was read as a reference and never linked; same for MMA. The lineage is
+  the MIT `ireal-renderer` / `ireal-reader`. Shipped to the browser: React, React-DOM,
+  and the four packages here.
+- **`fixtures/`** is user-contributed transcriptions of copyrighted songs. Git-ignored
+  and fetched on demand; tests needing it skip when absent, so a fresh clone runs green.
 
 ## Licence
 
-**Not yet chosen.** Without a LICENCE file the default is all rights reserved,
-which means nobody can legally contribute. Pick one before making the
-repository public.
+**Not yet chosen.** Without a LICENCE file the default is all rights reserved, so
+nobody can legally contribute. Pick one before making the repository public.
