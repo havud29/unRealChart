@@ -1,25 +1,30 @@
 <!--
-  The tab icon: a bar of chart.
+  The mark: uR, the opening of unRealChart.
 
-  Three barlines and a chord on the first beat, the same mark the installed app
-  icon draws, so the tab and the home screen agree. It replaces an `iF`
-  monogram left over from the old name, in a palette the app no longer uses.
+  Two letters, not three. At sixteen pixels, which is what a browser tab
+  actually gives you, `uRC` merges into a smudge: three glyphs share about
+  twelve usable pixels and none of them survives. Two letters hold, and the
+  pair is distinctive enough to be this app and not another.
 
-  A dark ground rather than a light one: a browser tab sits on chrome that may
-  be light or dark, and paper on ink holds up against both where ink on paper
-  disappears into a light toolbar. Chunkier strokes than the large icon uses,
-  because this is read at sixteen pixels.
+  The R takes the accent so the mark is not a flat block of text, and the dark
+  ground is there because a tab sits on chrome that may be light or dark: paper
+  on ink reads against both, where ink on paper vanishes into a light toolbar.
 
   Note for editing: this comment may not contain a double hyphen. XML forbids
-  it, and the whole file fails to parse, which shows up only as a tab with no
-  icon rather than as an error anyone would notice.
+  it, the whole file fails to parse, and the only symptom is a tab with no icon
+  rather than an error anyone would notice.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="unRealChart">
   <rect width="32" height="32" rx="7" fill="#23201c" />
-  <g fill="#faf9f5">
-    <rect x="7" y="9" width="2" height="14" rx="0.6" />
-    <rect x="15" y="9" width="2" height="14" rx="0.6" />
-    <rect x="23" y="9" width="2" height="14" rx="0.6" />
-  </g>
-  <rect x="10.5" y="11.5" width="4" height="3.2" rx="0.8" fill="#d97757" />
+  <text
+    x="16"
+    y="23.5"
+    text-anchor="middle"
+    font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif"
+    font-size="21"
+    font-weight="800"
+    letter-spacing="-1"
+  >
+    <tspan fill="#faf9f5">u</tspan><tspan fill="#d97757">R</tspan>
+  </text>
 </svg>
