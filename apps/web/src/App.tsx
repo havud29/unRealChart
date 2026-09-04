@@ -16,7 +16,8 @@ import { PACKS, toMidiFile } from '@unrealchart/groove-engine';
 import { CHORD_STEPS, Chart, ZOOM_STEPS, stepThrough, stepZoom } from './Chart.js';
 import { DEFAULT_SETTINGS, usePlayer } from './usePlayer.js';
 import type { PlayerSettings } from './usePlayer.js';
-import { CHORD_SIZE_SETTING, ZOOM_SETTING, createLibrary } from './storage.js';
+import { CHORD_SIZE_SETTING, ZOOM_SETTING, createLibrary, songId } from './storage.js';
+import type { SongState } from './storage.js';
 import type { LibraryEntry } from './storage.js';
 import { DEFAULT_LIBRARY, SEED_SETTING, fetchDefaultLibrary } from './defaultLibrary.js';
 import { NEW_CHART_TITLE, blankSong } from './newChart.js';
@@ -49,6 +50,9 @@ const DEMO_URI = `irealb://${encodeURIComponent(
 )}`;
 
 const HORN_KEYS: InstrumentKey[] = ['C', 'Bb', 'Eb', 'F'];
+
+/** How many songs the recently-viewed list holds. */
+const RECENT_LIMIT = 50;
 
 /** The twelve roots, spelled the way iReal Pro's key menu spells them. */
 const KEY_ROOTS = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
@@ -123,14 +127,17 @@ function Stepper({
   caption,
   onStep,
   onClick,
+  changed = false,
 }: {
   value: string;
   caption: string;
   onStep?: (delta: number) => void;
   onClick?: () => void;
+  /** The reader has moved this off what the chart says. */
+  changed?: boolean;
 }) {
   return (
-    <div className="stepper">
+    <div className={`stepper${changed ? ' changed' : ''}`}>
       <div className="stepper-row">
         <button
           type="button"
@@ -198,6 +205,13 @@ export function App() {
   const [zoom, setZoom] = useState(1);
   /** How large chords are set within the page — iReal Pro's `Aa`. */
   const [chordSize, setChordSize] = useState(1);
+  /**
+   * What each song was last left in: its key, tempo, style and repeats.
+   *
+   * Held in memory so the list can be ordered by recency without a read per
+   * row, and written through to storage as it changes.
+   */
+  const [songStates, setSongStates] = useState<Map<string, SongState>>(new Map);
   const [theme, setTheme] = useState<'auto' | 'light' | 'dark'>('auto');
   const [marker, setMarker] = useState<'yellow' | 'red' | 'green' | 'hidden'>('yellow');
   const [highlightMarks, setHighlightMarks] = useState(true);
@@ -277,6 +291,7 @@ export function App() {
       ]);
       if (typeof storedZoom === 'number' && storedZoom > 0) setZoom(storedZoom);
       if (typeof storedChord === 'number' && storedChord > 0) setChordSize(storedChord);
+      setSongStates(await library.songStates());
       zoomLoaded.current = true;
     })();
   }, [library]);
@@ -364,8 +379,25 @@ export function App() {
       const name = source.slice(3);
       return entries.filter((e) => e.playlist === name);
     }
+    if (source === 'recent') {
+      // Most recent first, and capped: a "recently viewed" list that holds
+      // everything you have ever opened is just the library again.
+      return entries
+        .filter((e) => songStates.get(e.id)?.viewedAt)
+        .sort((a, b) => (songStates.get(b.id)!.viewedAt) - (songStates.get(a.id)!.viewedAt))
+        .slice(0, RECENT_LIMIT);
+    }
     return entries;
-  }, [entries, source]);
+  }, [entries, source, songStates]);
+
+  /** How many songs in the library have actually been opened. */
+  const recentCount = useMemo(
+    () => entries.reduce((n, e) => n + (songStates.get(e.id)?.viewedAt ? 1 : 0), 0),
+    [entries, songStates],
+  );
+
+  // Recency is the order; re-sorting by title would throw it away.
+  const keepOrder = source === 'recent' && sort === 'title';
 
   const listed = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -377,10 +409,11 @@ export function App() {
     );
     const by = (song: Song) =>
       sort === 'composer' ? song.composer : sort === 'style' ? song.style : song.title;
+    if (keepOrder) return filtered;
     return [...filtered].sort(
       (a, b) => by(a.song).localeCompare(by(b.song)) || a.song.title.localeCompare(b.song.title),
     );
-  }, [inSource, query, sort]);
+  }, [inSource, query, sort, keepOrder]);
 
   // Keep a selection alive across imports, filters and sorts.
   const selected = useMemo(
@@ -411,6 +444,75 @@ export function App() {
       setSettings((s) => ({ ...s, bpm: model.meta.bpm || 140, loop: null }));
     }
   }, [model]);
+
+  /*
+   * Put a song back the way it was left, and note that it was opened.
+   *
+   * Declared after the effect that resets tempo, key and repeats on a song
+   * change: that one states the chart's own defaults, and this one puts the
+   * reader's choices back on top. The other order would restore the state and
+   * then immediately wipe it.
+   */
+  const openedId = useRef<string | null>(null);
+  useEffect(() => {
+    if (!selected || !model) return;
+    // Only a song the reader actually chose. `selected` falls back to the
+    // first row when nothing is picked, so counting that as a view stamps
+    // whatever sorts first alphabetically on every cold start -- and the
+    // recently-viewed list fills up with songs nobody opened.
+    if (selectedId !== selected.id) return;
+    if (openedId.current === selected.id) return;
+    openedId.current = selected.id;
+
+    const stored = songStates.get(selected.id);
+    if (stored) {
+      setTranspose(stored.transpose);
+      if (stored.repeats !== null) setRepeats(stored.repeats);
+      setSettings((current) => ({
+        ...current,
+        bpm: stored.bpm ?? model.meta.bpm ?? 140,
+        grooveId: stored.grooveId,
+      }));
+    }
+
+    const next: SongState = {
+      transpose: stored?.transpose ?? 0,
+      bpm: stored?.bpm ?? null,
+      repeats: stored?.repeats ?? null,
+      grooveId: stored?.grooveId ?? null,
+      viewedAt: Date.now(),
+    };
+    setSongStates((map) => new Map(map).set(selected.id, next));
+    void library.setSongState(selected.id, next);
+  }, [selected, selectedId, model, songStates, library]);
+
+  /**
+   * Remember a change to this song.
+   *
+   * Only once the song has been opened and restored -- writing while the reset
+   * effect is still settling would save the defaults over the reader's own
+   * choices, which is the bug this ordering exists to avoid.
+   */
+  const rememberState = useCallback(
+    (patch: Partial<Omit<SongState, 'viewedAt'>>) => {
+      const id = selected?.id;
+      if (!id || openedId.current !== id) return;
+      setSongStates((map) => {
+        const current = map.get(id);
+        const next: SongState = {
+          transpose: current?.transpose ?? 0,
+          bpm: current?.bpm ?? null,
+          repeats: current?.repeats ?? null,
+          grooveId: current?.grooveId ?? null,
+          viewedAt: current?.viewedAt ?? Date.now(),
+          ...patch,
+        };
+        void library.setSongState(id, next);
+        return new Map(map).set(id, next);
+      });
+    },
+    [selected?.id, library],
+  );
 
   // Repeats are a player setting rather than a property of the chart, so the
   // model handed to the player carries the count the user chose.
@@ -449,7 +551,9 @@ export function App() {
   function chooseKey(root: string) {
     if (!model) return;
     const from = keyPitch(model.meta.key || 'C');
-    setTranspose((((keyPitch(root) - from) % 12) + 12) % 12);
+    const next = (((keyPitch(root) - from) % 12) + 12) % 12;
+    setTranspose(next);
+    rememberState({ transpose: next });
     setMenu(null);
   }
 
@@ -470,8 +574,18 @@ export function App() {
       if (stored.length > 0) setEntries(stored);
       const name = parsed.find((p) => p.name)?.name;
       setSource(name ? `pl:${name}` : 'songs');
-      setSelectedId(null);
       setQuery('');
+
+      /*
+       * Open what was just imported.
+       *
+       * Clearing the selection fell back to whatever sorted first in the whole
+       * library, so importing a single tune left you looking at something
+       * alphabetical and unrelated. The first song of the first file is what
+       * the reader was reaching for.
+       */
+      const first = parsed.find((p) => p.songs.length > 0)?.songs[0];
+      setSelectedId(first ? songId(first) : null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -576,18 +690,31 @@ export function App() {
       <Stepper
         value={String(repeats)}
         caption="Repeats"
-        onStep={(d) => setRepeats((r) => Math.max(1, Math.min(64, r + d)))}
+        changed={repeats !== (model?.meta.repeats || 3)}
+        onStep={(d) =>
+          setRepeats((r) => {
+            const next = Math.max(1, Math.min(64, r + d));
+            rememberState({ repeats: next });
+            return next;
+          })
+        }
       />
       <Stepper
         value={String(bpm)}
         caption="Tempo"
+        changed={model != null && bpm !== (model.meta.bpm || 140)}
         onStep={(d) =>
-          setSettings((s) => ({ ...s, bpm: Math.max(40, Math.min(320, (s.bpm || bpm) + d * 2)) }))
+          setSettings((s) => {
+            const next = Math.max(40, Math.min(320, (s.bpm || bpm) + d * 2));
+            rememberState({ bpm: next });
+            return { ...s, bpm: next };
+          })
         }
       />
       <Stepper
         value={shownKey || '—'}
         caption="Key"
+        changed={transpose !== 0}
         onClick={() => setMenu(menu === 'key' ? null : 'key')}
       />
     </>
@@ -708,6 +835,17 @@ export function App() {
               <span className="src-icon">♪</span>
               <span className="src-name">Songs</span>
               <span className="src-count">{entries.length}</span>
+            </button>
+            <button
+              type="button"
+              className={`src${source === 'recent' ? ' active' : ''}`}
+              onClick={() => setSource('recent')}
+            >
+              <span className="src-icon">🕘</span>
+              <span className="src-name">Recently viewed</span>
+              <span className="src-count">
+                {Math.min(recentCount, RECENT_LIMIT) || ''}
+              </span>
             </button>
             <button
               type="button"
@@ -893,7 +1031,7 @@ export function App() {
 
               <button
                 type="button"
-                className="p-style"
+                className={`p-style${settings.grooveId ? ' changed' : ''}`}
                 onClick={() => setMenu(menu === 'style' ? null : 'style')}
               >
                 <span className="p-style-name">{player.pack?.name ?? 'Style'}</span>
@@ -1212,6 +1350,7 @@ export function App() {
             type="button"
             className={settings.grooveId === null ? 'on' : ''}
             onClick={() => {
+              rememberState({ grooveId: null });
               setSettings((s) => ({ ...s, grooveId: null }));
               setMenu(null);
             }}

@@ -1208,6 +1208,38 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   letter-spacing: 0.11em;
   color: var(--ink-2);
 }
+/*
+ * A control the reader has moved off what the chart says.
+ *
+ * The chart is the reference, so a key or tempo that is no longer the written
+ * one has to say so -- otherwise you read a transposed chart believing it is
+ * the original. A tint and the accent colour, not a badge: it marks a state,
+ * it is not a thing to press.
+ */
+.stepper.changed .stepper-value,
+.p-style.changed .p-style-name {
+  color: var(--accent-text);
+  font-weight: 700;
+}
+.stepper.changed .stepper-caption,
+.p-style.changed .stepper-caption {
+  color: var(--accent-text);
+}
+.stepper.changed .stepper-value::after,
+.p-style.changed .p-style-name::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -2px;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  transform: translateX(-50%);
+}
+.stepper.changed .stepper-value,
+.p-style.changed .p-style-name { position: relative; }
+
 .pop-seg { display: flex; flex-wrap: wrap; gap: 4px; }
 
 /* Zoom: a stepper, the shape a browser uses. The reading stays on the middle

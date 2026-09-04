@@ -149,6 +149,29 @@ export interface LibraryEntry {
   playlist: string | null;
 }
 
+/**
+ * What a reader has done to one song, kept so reopening it does not undo it.
+ *
+ * Deliberately not written into the chart. Playing a tune in another key or at
+ * another tempo is a decision about this session, not an edit to the song, and
+ * a reader who transposes to read with a horn player has not changed what the
+ * chart says. Keeping it beside the song means the chart still exports and
+ * shares as it was written.
+ */
+export interface SongState {
+  /** Semitones from the written key. 0 means the chart as written. */
+  transpose: number;
+  /** Overridden tempo, or null to follow the chart. */
+  bpm: number | null;
+  repeats: number | null;
+  grooveId: string | null;
+  /** When the song was last opened, for the recently-viewed list. */
+  viewedAt: number;
+}
+
+/** Settings-store key for one song's state. */
+const stateKey = (id: string) => `state:${id}`;
+
 export interface LibraryStore {
   add(playlist: Playlist): Promise<number>;
   all(): Promise<LibraryEntry[]>;
@@ -163,6 +186,9 @@ export interface LibraryStore {
   count(): Promise<number>;
   setSetting(key: string, value: unknown): Promise<void>;
   getSetting<T>(key: string): Promise<T | undefined>;
+  /** Every song's remembered state, by song id. */
+  songStates(): Promise<Map<string, SongState>>;
+  setSongState(id: string, state: SongState): Promise<void>;
 }
 
 /**
@@ -300,6 +326,37 @@ export function createLibrary(): LibraryStore {
         const tx = handle.transaction(SETTINGS, 'readonly');
         const store = tx.objectStore(SETTINGS);
         return (await run(store, store.get(key))) as T | undefined;
+      }, undefined);
+    },
+
+    async songStates() {
+      return safely(async (handle) => {
+        const tx = handle.transaction(SETTINGS, 'readonly');
+        const store = tx.objectStore(SETTINGS);
+        // Read keys and values together rather than one get per song: a
+        // library of 1400 songs would otherwise open with 1400 round trips.
+        const keys = (await run(store, store.getAllKeys())) as IDBValidKey[];
+        const values = (await run(store, store.getAll())) as unknown[];
+        const states = new Map<string, SongState>();
+        keys.forEach((key, i) => {
+          if (typeof key !== 'string' || !key.startsWith('state:')) return;
+          const value = values[i] as SongState | undefined;
+          if (value && typeof value.viewedAt === 'number') {
+            states.set(key.slice('state:'.length), value);
+          }
+        });
+        return states;
+      }, new Map<string, SongState>());
+    },
+
+    async setSongState(id, state) {
+      await safely(async (handle) => {
+        const tx = handle.transaction(SETTINGS, 'readwrite');
+        tx.objectStore(SETTINGS).put(state, stateKey(id));
+        await new Promise<void>((resolve, reject) => {
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
       }, undefined);
     },
   };
