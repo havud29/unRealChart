@@ -374,7 +374,9 @@ button, input, select { font: inherit; }
 
 .panes {
   display: grid;
-  grid-template-columns: var(--w-sources) var(--w-list) minmax(0, 1fr) var(--w-panel);
+  /* Set inline as a custom property, so the narrow layout below can still
+     override the template itself. */
+  grid-template-columns: var(--panes-cols, var(--w-sources) var(--w-list) minmax(0, 1fr) var(--w-panel));
   min-height: 0;
 }
 .panes.no-sources { grid-template-columns: var(--w-list) minmax(0, 1fr) var(--w-panel); }
@@ -1330,6 +1332,8 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
 .cn-chord .c-tail { font-size: 0.6em; }
 .cn-notes { font-size: 12px; color: var(--ink-2); letter-spacing: 0.02em; }
 
+.sl-search { margin: 8px 10px; width: calc(100% - 20px); }
+
 .pop-seg { display: flex; flex-wrap: wrap; gap: 4px; }
 
 /* Zoom: a stepper, the shape a browser uses. The reading stays on the middle
@@ -1669,6 +1673,14 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
 /* ---------- narrow windows ---------- */
 
 @media (max-width: 900px) {
+  /*
+   * One column, list above chart.
+   *
+   * The panes React does not render are gone from the DOM rather than hidden
+   * here: the app reads the same breakpoint through `useNarrow`, so the
+   * stylesheet no longer has to hide something the app thinks it is showing.
+   * That disagreement is what left a phone with no transport at all.
+   */
   .panes,
   .panes.no-sources,
   .panes.no-panel,
@@ -1676,8 +1688,15 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: 34vh minmax(0, 1fr);
   }
-  .sources { display: none; }
-  .panel { display: none; }
+
+  /* The wordmark yields to the song title. There is room for one of them, and
+     the title is the one that changes. */
+  .wordmark { display: none; }
+  .tb-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   /* On a phone the page fits the width instead, which is the one place
      reflowing to the window beats holding the proportions. */
   .page { width: 100%; max-width: calc(var(--cell) * 17.2); }

@@ -165,6 +165,33 @@ function Stepper({
   );
 }
 
+/**
+ * Whether the window is too narrow for the side panes.
+ *
+ * CSS knew this and React did not, and the two disagreed: the stylesheet hid
+ * the player panel on a phone while the app still believed it was showing,
+ * so the bottom bar -- which exists precisely for when the panel is away --
+ * never rendered, and a phone had no transport at all. One source of truth,
+ * read from the same breakpoint the stylesheet uses.
+ */
+const NARROW = '(max-width: 900px)';
+
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia(NARROW).matches,
+  );
+
+  useEffect(() => {
+    const query = window.matchMedia(NARROW);
+    const update = () => setNarrow(query.matches);
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+
+  return narrow;
+}
+
 export function App() {
   const library = useRef(createLibrary()).current;
 
@@ -226,6 +253,7 @@ export function App() {
   const [showDiagrams, setShowDiagrams] = useState(false);
   /** The chords-and-notes column, between the page and the player panel. */
   const [showNotes, setShowNotes] = useState(false);
+  const narrow = useNarrow();
   const serviceWorker = useServiceWorker();
 
   // Bring the library back on load. Until this resolves the demo chart stands
@@ -516,6 +544,28 @@ export function App() {
     },
     [selected?.id, library],
   );
+
+  /*
+   * What is actually on screen.
+   *
+   * A phone has room for the chart and little else, so the side panes stand
+   * down there whatever their toggles say -- and the rest of the app reads
+   * these rather than the toggles, so nothing can believe a pane is showing
+   * while the layout has taken it away.
+   */
+  const sourcesVisible = showSources && !narrow;
+  const panelVisible = (showPanel || editing) && !narrow;
+  const notesVisible = showNotes && !narrow;
+
+  const columns = [
+    sourcesVisible ? 'var(--w-sources)' : null,
+    'var(--w-list)',
+    'minmax(0, 1fr)',
+    notesVisible ? 'var(--w-notes)' : null,
+    panelVisible ? 'var(--w-panel)' : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   // Repeats are a player setting rather than a property of the chart, so the
   // model handed to the player carries the count the user chose.
@@ -822,27 +872,23 @@ export function App() {
       </header>
 
       <div
-        className={`panes${showSources ? '' : ' no-sources'}${
-          showPanel || editing ? '' : ' no-panel'
+        className={`panes${sourcesVisible ? '' : ' no-sources'}${
+          panelVisible ? '' : ' no-panel'
         }`}
         /*
          * Built rather than declared. Each pane can be hidden independently,
          * and with five of them that is thirty-two class combinations to spell
          * out in CSS; listing the visible ones is the same rule stated once.
          */
-        style={{
-          gridTemplateColumns: [
-            showSources ? 'var(--w-sources)' : null,
-            'var(--w-list)',
-            'minmax(0, 1fr)',
-            showNotes ? 'var(--w-notes)' : null,
-            showPanel || editing ? 'var(--w-panel)' : null,
-          ]
-            .filter(Boolean)
-            .join(' '),
-        }}
+        /*
+         * A custom property, not `grid-template-columns` itself. An inline
+         * template beats any stylesheet rule, so setting it directly meant the
+         * narrow layout could not override it -- on a phone the panes kept
+         * their desktop widths and the chart was squeezed to nothing.
+         */
+        style={{ '--panes-cols': columns } as CSSProperties}
       >
-        {showSources ? (
+        {sourcesVisible ? (
           <aside className="sources">
             <input
               className="search"
@@ -953,6 +999,18 @@ export function App() {
 
         <section className="songlist">
           <header className="sl-head">{sourceName}</header>
+
+          {/* The search lives in the sidebar, which stands down on a phone.
+              Rather than lose it, it moves in here with the list it filters. */}
+          {narrow ? (
+            <input
+              className="search sl-search"
+              type="search"
+              placeholder="Search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          ) : null}
           <div className="sl-sort">
             {(['title', 'composer', 'style'] as const).map((column) => (
               <button
@@ -1021,7 +1079,7 @@ export function App() {
                 </div>
               ) : null}
 
-              {!showPanel || editing ? (
+              {!panelVisible || editing ? (
                 <div className="bottombar">
                   <button
                     type="button"
@@ -1045,7 +1103,7 @@ export function App() {
           )}
         </main>
 
-        {showNotes ? (
+        {notesVisible ? (
           <ChordNotes
             model={shown}
             activeBar={player.currentSourceBar ?? player.cuedBar}
@@ -1054,7 +1112,7 @@ export function App() {
         ) : null}
 
         <aside
-          className={`panel${showPanel || editing ? '' : ' hidden'}`}
+          className={`panel${panelVisible ? '' : ' hidden'}`}
           ref={setPanelHost}
           aria-label={editing ? 'Editor' : 'Player controls'}
         >
