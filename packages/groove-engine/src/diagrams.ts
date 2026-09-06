@@ -259,7 +259,18 @@ export function chordNoteNames(root: number, quality: string, bass?: number): st
   const degrees: Array<[number, number]> = [[1, 0]];
   if (third !== null) degrees.push([3, third]);
   degrees.push([5, fifth]);
-  if (seventh !== null) degrees.push([7, seventh]);
+
+  /*
+   * The `seventh` slot holds a sixth for a sixth chord, and nine semitones
+   * means two different notes depending on the chord it is in. In `Bb6/9` it
+   * is the sixth, G. In `Bbo7` it is the diminished seventh, A double flat.
+   * Same pitch, different name, and taking it for a seventh either way spelled
+   * a six-nine chord `Bb D F Abb C`.
+   */
+  if (seventh !== null) {
+    const isDiminished = /^o/.test(quality.trim());
+    degrees.push([seventh === 9 && !isDiminished ? 6 : 7, seventh]);
+  }
   for (const tension of tensions) {
     const degree = tension <= 15 ? 9 : tension <= 18 ? 11 : 13;
     degrees.push([degree, tension]);

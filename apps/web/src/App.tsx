@@ -23,6 +23,7 @@ import { DEFAULT_LIBRARY, SEED_SETTING, fetchDefaultLibrary } from './defaultLib
 import { NEW_CHART_TITLE, blankSong } from './newChart.js';
 import { Editor } from './Editor.js';
 import { Diagrams } from './Diagrams.js';
+import { ChordNotes } from './ChordNotes.js';
 import { useServiceWorker, useWakeLock } from './useServiceWorker.js';
 
 /**
@@ -223,6 +224,8 @@ export function App() {
   const [settings, setSettings] = useState<PlayerSettings>(DEFAULT_SETTINGS);
   const [editing, setEditing] = useState(false);
   const [showDiagrams, setShowDiagrams] = useState(false);
+  /** The chords-and-notes column, between the page and the player panel. */
+  const [showNotes, setShowNotes] = useState(false);
   const serviceWorker = useServiceWorker();
 
   // Bring the library back on load. Until this resolves the demo chart stands
@@ -822,6 +825,22 @@ export function App() {
         className={`panes${showSources ? '' : ' no-sources'}${
           showPanel || editing ? '' : ' no-panel'
         }`}
+        /*
+         * Built rather than declared. Each pane can be hidden independently,
+         * and with five of them that is thirty-two class combinations to spell
+         * out in CSS; listing the visible ones is the same rule stated once.
+         */
+        style={{
+          gridTemplateColumns: [
+            showSources ? 'var(--w-sources)' : null,
+            'var(--w-list)',
+            'minmax(0, 1fr)',
+            showNotes ? 'var(--w-notes)' : null,
+            showPanel || editing ? 'var(--w-panel)' : null,
+          ]
+            .filter(Boolean)
+            .join(' '),
+        }}
       >
         {showSources ? (
           <aside className="sources">
@@ -1026,6 +1045,14 @@ export function App() {
           )}
         </main>
 
+        {showNotes ? (
+          <ChordNotes
+            model={shown}
+            activeBar={player.currentSourceBar ?? player.cuedBar}
+            onPick={(bar) => player.seekToBar(bar)}
+          />
+        ) : null}
+
         <aside
           className={`panel${showPanel || editing ? '' : ' hidden'}`}
           ref={setPanelHost}
@@ -1171,6 +1198,15 @@ export function App() {
                 onClick={() => setShowDiagrams((v) => !v)}
               >
                 Chord Diagrams
+              </button>
+
+              <button
+                type="button"
+                className={`p-button${showNotes ? ' on' : ''}`}
+                title="Every chord in the tune, with its notes"
+                onClick={() => setShowNotes((v) => !v)}
+              >
+                Chord Notes
               </button>
 
               <div className="p-row p-inline">

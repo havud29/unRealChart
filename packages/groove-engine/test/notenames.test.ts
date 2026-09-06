@@ -53,3 +53,27 @@ describe('chord note names', () => {
     }
   });
 });
+
+describe('nine semitones is two different notes', () => {
+  /**
+   * The interval does not name the note; the chord does. Nine semitones above
+   * B flat is the sixth of a six-nine chord (G) and the diminished seventh of
+   * a diminished chord (A double flat). Reading it as a seventh either way
+   * spelled `Bb6/9` as `Bb D F Abb C`.
+   */
+  it('names the sixth of a six-nine chord', () => {
+    expect(chordNoteNames(Bb, '69')).toEqual(['B♭', 'D', 'F', 'G', 'C']);
+  });
+
+  it('names a plain sixth chord', () => {
+    expect(chordNoteNames(C, '6')).toEqual(['C', 'E', 'G', 'A']);
+  });
+
+  it('still names the diminished seventh as a seventh', () => {
+    expect(chordNoteNames(C, 'o7')).toEqual(['C', 'E♭', 'G♭', 'B♭♭']);
+  });
+
+  it('leaves the minor seventh alone', () => {
+    expect(chordNoteNames(C, '-7')).toEqual(['C', 'E♭', 'G', 'B♭']);
+  });
+});

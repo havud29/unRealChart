@@ -76,6 +76,7 @@
   --w-sources: 204px;
   --w-list: 220px;
   --w-panel: 248px;
+  --w-notes: 232px;
   --titlebar: 46px;
 
   /* A little printed grain, so the page is paper rather than a white box. */
@@ -1263,6 +1264,71 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   border-color: var(--accent);
   color: var(--accent-ink);
 }
+
+/* ---------- the chords-and-notes column ----------
+
+   Between the page and the player: the chart is what you read, this is what is
+   in it. One chord to a line, spelled out, in playing order.            */
+
+.chordnotes {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-left: 1px solid var(--rule);
+  background: var(--surface);
+}
+.cn-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--rule);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.cn-count { font-variant-numeric: tabular-nums; font-weight: 600; }
+.cn-empty { margin: 0; padding: 14px 12px; font-size: 12.5px; color: var(--ink-2); }
+
+.cn-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  overflow-y: auto;
+  flex: 1;
+}
+.cn-row {
+  display: grid;
+  /* The bar number is a fixed gutter so the chords line up down the column. */
+  grid-template-columns: 2.6rem 1fr;
+  gap: 2px 8px;
+  width: 100%;
+  padding: 5px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.cn-row:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cn-row.active { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.cn-bar {
+  grid-row: span 2;
+  align-self: center;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+/* The symbol assembles from root, raised accidental and dropped quality, all
+   sized in em, so setting a base size here scales the whole thing. */
+.cn-chord { font-size: 17px; font-weight: 600; line-height: 1.15; }
+.cn-chord .c-tail { font-size: 0.6em; }
+.cn-notes { font-size: 12px; color: var(--ink-2); letter-spacing: 0.02em; }
 
 .pop-seg { display: flex; flex-wrap: wrap; gap: 4px; }
 
