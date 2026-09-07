@@ -244,6 +244,8 @@ export function App() {
   const [marker, setMarker] = useState<'yellow' | 'red' | 'green' | 'hidden'>('yellow');
   const [highlightMarks, setHighlightMarks] = useState(true);
   const [showBeats, setShowBeats] = useState(false);
+  /** Notes to aim at, drawn under every chord. */
+  const [showTones, setShowTones] = useState(false);
   const [horn, setHorn] = useState<InstrumentKey>('C');
 
   const [transpose, setTranspose] = useState(0);
@@ -1063,6 +1065,7 @@ export function App() {
                     playingBar={marker === 'hidden' ? null : player.currentSourceBar}
                     zoom={zoom}
                     chordSize={chordSize}
+                    showTones={showTones}
                     cuedBar={player.cuedBar}
                     onSeek={(bar) => player.seekToBar(bar)}
                     onSelectRange={(fromBar, toBar) =>
@@ -1417,6 +1420,10 @@ export function App() {
               onChange={() => setHighlightMarks((v) => !v)}
             />
             Highlight Rehearsal Symbols
+          </label>
+          <label className="pop-check">
+            <input type="checkbox" checked={showTones} onChange={() => setShowTones((v) => !v)} />
+            Chord tones to solo on
           </label>
           <label className="pop-check">
             <input type="checkbox" checked={showBeats} onChange={() => setShowBeats((v) => !v)} />

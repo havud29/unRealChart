@@ -34,6 +34,10 @@ seeds itself once, so there is something to read immediately.
   voicings, drums. Repeats, endings, D.C./D.S., Coda and Fine unroll into play order.
 - **Lets you change it** — cell-grid editor with undo and live validation. Key,
   tempo, style and repeats are remembered per song.
+- **Shows you what to play** — `Aa` → *Chord tones to solo on* draws the notes
+  under every chord: the third and seventh marked as the ones that spell the
+  change, tones the next chord also holds boxed as somewhere to sit, and tones
+  that lean a half step into the next chord's guide tone underlined.
 - **Goes with you** — installable, offline, exports to iReal Pro URIs and HTML,
   MusicXML, MIDI and print.
 

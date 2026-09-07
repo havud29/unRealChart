@@ -245,7 +245,25 @@ function spell(rootLetterIndex: number, rootPitch: number, degree: number, semit
  * For reading rather than for playing: `C-7` is `C E♭ G B♭`. A slash bass is
  * put first, because that is where it sounds and how the symbol reads.
  */
-export function chordNoteNames(root: number, quality: string, bass?: number): string[] {
+/** One note of a chord: what it is called, and which degree it plays. */
+export interface SpelledTone {
+  name: string;
+  /** Pitch class, 0-11. */
+  pc: number;
+  /** Scale degree: 1, 3, 5, 6, 7, 9, 11 or 13. */
+  degree: number;
+  /** Semitones above the root. */
+  semitones: number;
+}
+
+/**
+ * A chord as spelled tones, degree by degree.
+ *
+ * The degrees are the point. Everything downstream -- naming the notes, and
+ * knowing which of them are the third and seventh a soloist aims at -- needs to
+ * know what each note is *doing* in the chord, and a pitch class cannot say.
+ */
+export function chordSpelling(root: number, quality: string): SpelledTone[] {
   const { third, fifth, seventh, tensions } = chordTones(quality);
 
   // Which letter the root is spelled with. Pitch class alone cannot say
@@ -276,9 +294,23 @@ export function chordNoteNames(root: number, quality: string, bass?: number): st
     degrees.push([degree, tension]);
   }
 
-  const names = degrees.map(([degree, semitones]) =>
-    spell(rootLetterIndex, rootPitch, degree, semitones),
-  );
+  return degrees.map(([degree, semitones]) => ({
+    name: spell(rootLetterIndex, rootPitch, degree, semitones),
+    pc: (rootPitch + semitones) % 12,
+    degree,
+    semitones,
+  }));
+}
+
+/**
+ * The notes of a chord, named and in order.
+ *
+ * For reading rather than for playing: `C-7` is `C E♭ G B♭`. A slash bass is
+ * put first, because that is where it sounds and how the symbol reads.
+ */
+export function chordNoteNames(root: number, quality: string, bass?: number): string[] {
+  const rootPitch = root % 12;
+  const names = chordSpelling(root, quality).map((tone) => tone.name);
 
   if (bass !== undefined && bass % 12 !== rootPitch) {
     const bassIndex = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6][bass % 12]!;

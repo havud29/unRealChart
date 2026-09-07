@@ -1334,6 +1334,55 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
 
 .sl-search { margin: 8px 10px; width: calc(100% - 20px); }
 
+/* ---------- chord tones, for building a solo ----------
+
+   Three things a soloist wants off a chart, and they are ranked, so the
+   drawing ranks them: the guide tones are the loudest, a tone the next chord
+   also holds is boxed as somewhere to sit, and one that leans a half step into
+   the change is underlined as somewhere to go. Roots and fifths stay quiet --
+   true, but they do not say which chord this is.               */
+
+.tones {
+  position: absolute;
+  left: 0;
+  top: calc(100% + var(--cell) * 0.04);
+  display: flex;
+  flex-wrap: nowrap;
+  gap: calc(var(--cell) * 0.16);
+  font-size: calc(var(--cell) * 0.3);
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* Root and fifth: present, and deliberately not competing. */
+.tone { opacity: 0.42; }
+
+/* The third and the seventh. This is the note to land on. */
+.tone.role-guide {
+  opacity: 1;
+  font-weight: 800;
+  color: var(--paper-red);
+}
+
+/* Colour tones sit between the two. */
+.tone.role-colour { opacity: 0.62; font-style: italic; }
+
+/* Held through the change: somewhere to sit while the harmony moves. */
+.tone.common {
+  opacity: 1;
+  border-radius: 3px;
+  padding: 0 calc(var(--cell) * 0.06);
+  background: color-mix(in srgb, var(--paper-blue) 20%, transparent);
+}
+
+/* Leans a half step into the next chord's guide tone: somewhere to go. */
+.tone.resolves {
+  opacity: 1;
+  border-bottom: 1.5px solid var(--paper-blue);
+}
+
 .pop-seg { display: flex; flex-wrap: wrap; gap: 4px; }
 
 /* Zoom: a stepper, the shape a browser uses. The reading stays on the middle

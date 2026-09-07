@@ -1,7 +1,9 @@
-import { useLayoutEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, PointerEvent as ReactPointerEvent, ReactNode } from 'react';
 import type { Bar, BarChord, SongModel } from '@unrealchart/song-model';
 import { Coda, DimCircle, Fermata, Segno, Triangle } from './Glyphs.js';
+import { soloTones } from '@unrealchart/groove-engine';
+import type { SoloTone } from '@unrealchart/groove-engine';
 
 /**
  * The chart, rendered from the musical model, as a page.
@@ -17,6 +19,18 @@ import { Coda, DimCircle, Fermata, Segno, Triangle } from './Glyphs.js';
  */
 
 const COLUMNS = 16;
+
+const PITCH: Record<string, number> = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+
+/** A written note name as a pitch class, or null if it is not a note. */
+function pitchClassOf(note: string | null): number | null {
+  if (!note) return null;
+  const base = PITCH[note[0]!.toUpperCase()];
+  if (base === undefined) return null;
+  const rest = note.slice(1);
+  const shift = (rest.match(/#/g)?.length ?? 0) - (rest.match(/b/g)?.length ?? 0);
+  return (((base + shift) % 12) + 12) % 12;
+}
 
 /*
  * The page's proportions, in cells, fitted to the Mac app.
@@ -142,14 +156,21 @@ const MIN_CELL = 13;
 const MAX_CELL = 48;
 
 /** The sheet's layout for a given number of systems. */
-export function sheetMetrics(systems: number): { system: number; page: number } {
+export function sheetMetrics(
+  systems: number,
+  /** Extra height each system needs, in cells. Chord tones want a line. */
+  extra = 0,
+): { system: number; page: number } {
   const rows = Math.max(1, systems);
   const room = SHEET - PAD_Y * 2 - HEADER;
-  const system = Math.min(SYSTEM_MAX, Math.max(SYSTEM_MIN, room / rows));
+  const system = Math.min(SYSTEM_MAX, Math.max(SYSTEM_MIN, room / rows)) + extra;
   // The sheet only stretches when even the tightest systems overrun it.
   const page = Math.max(SHEET, PAD_Y * 2 + HEADER + rows * system);
   return { system, page };
 }
+
+/** A line of chord tones is about this tall, in cells. */
+export const TONES_HEIGHT = 0.78;
 
 /**
  * Prettify a written symbol without changing what the user typed.
@@ -301,10 +322,45 @@ function Meter({ beats, beatType }: { beats: number; beatType: number }) {
   );
 }
 
+/**
+ * The notes to aim at under one chord.
+ *
+ * Guide tones -- the third and seventh -- carry the weight, because they are
+ * what tell a major seventh from a minor from a dominant. A tone the next
+ * chord also holds is marked as somewhere to sit through the change, and one
+ * that leans a half step into the next chord's guide tone is marked as
+ * somewhere to go. Everything else is drawn quietly: true, but not the point.
+ */
+function ToneLine({ tones }: { tones: SoloTone[] }) {
+  if (tones.length === 0) return null;
+  return (
+    <span className="tones" aria-hidden="true">
+      {tones.map((tone, i) => (
+        <span
+          key={i}
+          className={`tone role-${tone.role}${tone.common ? ' common' : ''}${
+            tone.resolvesTo ? ' resolves' : ''
+          }`}
+          title={
+            tone.resolvesTo
+              ? `${tone.name} — the ${tone.degree}, leans into ${tone.resolvesTo}`
+              : tone.common
+                ? `${tone.name} — the ${tone.degree}, held through the change`
+                : `${tone.name} — the ${tone.degree}`
+          }
+        >
+          {tone.name}
+        </span>
+      ))}
+    </span>
+  );
+}
+
 function BarView({
   bar,
   showBeats,
   showMeter,
+  tonesFor,
   first,
   endingStart,
   playing,
@@ -317,6 +373,8 @@ function BarView({
   bar: Bar;
   showBeats: boolean;
   showMeter: boolean;
+  /** Tones to draw under a chord, or null to draw none. */
+  tonesFor: (barIndex: number, chordIndex: number) => SoloTone[] | null;
   /** First bar of a system, which always opens with a barline. */
   first: boolean;
   /** First bar of an ending: the only one that carries the number. */
@@ -397,6 +455,10 @@ function BarView({
               {chord.fermata ? <Fermata size={0.7} /> : null}
               <ChordSymbol chord={chord} />
               {showBeats ? <span className="beats">{chord.beats}</span> : null}
+              {(() => {
+                const tones = tonesFor(bar.index, i);
+                return tones ? <ToneLine tones={tones} /> : null;
+              })()}
             </span>
           );
         })}
@@ -429,6 +491,8 @@ export interface ChartProps {
    * `zoom`: this changes the chords against a page that does not move.
    */
   chordSize?: number;
+  /** Draw the notes to aim at under every chord. */
+  showTones?: boolean;
   /** Bar range being looped, drawn as a tint over the chart. */
   loop?: { fromBar: number; toBar: number } | null;
 }
@@ -458,6 +522,7 @@ export function Chart({
   cuedBar = null,
   zoom = 1,
   chordSize = 1,
+  showTones = false,
   onSeek,
   onSelectRange,
   loop = null,
@@ -465,9 +530,46 @@ export function Chart({
   const rows = layout(model.bars);
   const starts = endingStarts(model.bars);
 
+  /*
+   * The tones under each chord, worked out once for the whole chart.
+   *
+   * Each chord is read against the one that follows it -- across the barline,
+   * not just within the bar -- because that is where the interesting part is:
+   * which note to hold through the change, and which one leans into it. A
+   * chord read on its own can only be spelled.
+   */
+  const tones = useMemo(() => {
+    if (!showTones) return null;
+
+    const flat: Array<{ bar: number; chord: number; ref: { root: number; quality: string } | null }> =
+      [];
+    for (const bar of model.bars) {
+      bar.chords.forEach((chord, index) => {
+        const pc = pitchClassOf(chord.root);
+        flat.push({
+          bar: bar.index,
+          chord: index,
+          ref: pc === null ? null : { root: pc, quality: chord.quality },
+        });
+      });
+    }
+
+    const map = new Map<string, SoloTone[]>();
+    flat.forEach((entry, i) => {
+      if (!entry.ref) return;
+      // The next chord that actually names a pitch: N.C. and repeat marks are
+      // not a harmony to resolve into.
+      const next = flat.slice(i + 1).find((candidate) => candidate.ref)?.ref ?? null;
+      map.set(`${entry.bar}:${entry.chord}`, soloTones(entry.ref, next));
+    });
+    return map;
+  }, [model, showTones]);
+
+  const tonesFor = (bar: number, chord: number) => tones?.get(`${bar}:${chord}`) ?? null;
+
   const fitRef = useRef<HTMLDivElement>(null);
   const [cell, setCell] = useState(30);
-  const { system, page } = sheetMetrics(rows.length);
+  const { system, page } = sheetMetrics(rows.length, showTones ? TONES_HEIGHT : 0);
 
   // One number decides the whole page. It comes from the height of the stage,
   // never from its width: that is what keeps the proportions stable when the
@@ -618,6 +720,7 @@ export function Chart({
                     bar={bar}
                     showBeats={showBeats}
                     showMeter={showMeter}
+                    tonesFor={tonesFor}
                     first={bar === row.bars[0]}
                     endingStart={starts.has(bar.index)}
                     playing={bar.index === playingBar}

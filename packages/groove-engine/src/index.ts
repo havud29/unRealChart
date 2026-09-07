@@ -61,9 +61,12 @@ export {
   INSTRUMENTS,
   UKULELE,
   chordNoteNames,
+  chordSpelling,
   fingerings,
   pianoVoicing,
   pitchClassesOf,
 } from './diagrams.js';
 export type { FretShape, Instrument } from './diagrams.js';
 export type { RenderResult } from './render.js';
+export { soloTones } from './solo.js';
+export type { SoloTone, ToneRole, ChordRef } from './solo.js';
