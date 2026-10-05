@@ -1,8 +1,16 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { describe, expect, it } from 'vitest';
-import { parsePlaylist } from '@unrealchart/ireal-format';
-import { barBeats, buildSongModel, transposeModel, unroll } from '../src/index.js';
+import { parsePlaylist, tokenize } from '@unrealchart/ireal-format';
+import {
+  barBeats,
+  buildSongModel,
+  copyCells,
+  pasteCells,
+  transposeModel,
+  unroll,
+} from '../src/index.js';
 import type { SongModel } from '../src/index.js';
 
 /**
@@ -124,5 +132,28 @@ describeCorpus('corpus model', () => {
         expect(moved, `${m.meta.title} +${semitones}`).toBe(chords);
       }
     }
+  });
+});
+
+describeCorpus('corpus editing', () => {
+  const songs = files.flatMap((file) => parsePlaylist(readFileSync(file, 'utf8')).songs);
+
+  it('pastes every chart over itself without changing a cell', () => {
+    // Paste re-pairs the two halves of each barline from what follows them. On
+    // a chart straight from the tokenizer that has to be a no-op, or pasting
+    // would quietly rewrite barlines nobody touched.
+    //
+    // Straight from the tokenizer means one payload, which is what a save
+    // writes. A multi-part song's cells are two records' cells end to end, and
+    // the seam between them lacks the half that tokenizing them together adds.
+    const changed = songs
+      .filter((song) => {
+        const cells = tokenize(song.music);
+        const all = cells.map((_, i) => i);
+        return !isDeepStrictEqual(pasteCells(cells, 0, copyCells(cells, all)), cells);
+      })
+      .map((song) => song.title);
+    console.log(`  paste: ${songs.length - changed.length}/${songs.length} charts unchanged`);
+    expect(changed.slice(0, 10)).toEqual([]);
   });
 });

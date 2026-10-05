@@ -1,4 +1,4 @@
-import type { Playlist, Song } from '@unrealchart/ireal-format';
+import type { Playlist, Scheme, Song } from '@unrealchart/ireal-format';
 import { parsePlaylist } from '@unrealchart/ireal-format';
 
 /**
@@ -147,6 +147,13 @@ export interface LibraryEntry {
   song: Song;
   /** The playlist the song was imported from, which is its source in the sidebar. */
   playlist: string | null;
+  /**
+   * How this song's own record is encoded — not whatever the library last
+   * imported. A chart written here is legacy plain text beside modern imports,
+   * and an edit re-encoded under the other scheme reads its fields from the
+   * wrong slots.
+   */
+  scheme: Scheme;
 }
 
 /**
@@ -248,10 +255,12 @@ export function createLibrary(): LibraryStore {
           .sort((a, b) => a.title.localeCompare(b.title))
           .flatMap((record) => {
             try {
-              return parsePlaylist(record.uri).songs.map((song) => ({
+              const parsed = parsePlaylist(record.uri);
+              return parsed.songs.map((song) => ({
                 id: record.id,
                 song,
                 playlist: record.playlist,
+                scheme: parsed.scheme,
               }));
             } catch (error) {
               // A stored song that will not reparse is a bug in whatever wrote

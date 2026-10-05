@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import type { Cell } from '@unrealchart/ireal-format';
 import { chordToText, tokenize } from '@unrealchart/ireal-format';
 import {
+  CELLS_PER_ROW,
   EditHistory,
   ENDING,
   METER,
   SECTION,
   appendRow,
+  clearCells,
+  copyCells,
   deleteCell,
+  deleteCells,
   insertCell,
   parseChordInput,
+  pasteCells,
   setAnnotation,
   setChord,
   setCloseBarline,
@@ -266,5 +272,83 @@ describe('EditHistory', () => {
     history.undo();
     history.undo();
     expect(history.cells).toEqual(base);
+  });
+});
+
+describe('several cells at once', () => {
+  // Four bars of four cells. Bar lines live on cells 4, 8 and 12.
+  const chart = cellsOf('[T44C^7   |A-7 D-7 |G7   |C^7   Z');
+  const chordAt = (cells: readonly Cell[], i: number) =>
+    cells[i]?.chord ? chordToText(cells[i]!.chord!) : null;
+  // What the editor shows has to be what a save and reload gives back.
+  const survivesSave = (cells: readonly Cell[]) => expect(tokenize(toPayload(cells))).toEqual(cells);
+
+  it('copies whole cells, in chart order, as copies', () => {
+    const clip = copyCells(chart, [6, 4, 4]);
+    expect(clip.map((c) => chordToText(c.chord!))).toEqual(['A-7', 'D-7']);
+    expect(clip[0]!.bars).toContain('(');
+    clip[0]!.chord = null;
+    expect(chordAt(chart, 4)).toBe('A-7');
+  });
+
+  it('pastes a bar over another, barline and all', () => {
+    const next = pasteCells(chart, 8, copyCells(chart, [4, 5, 6, 7]));
+    expect([8, 9, 10, 11].map((i) => chordAt(next, i))).toEqual(['A-7', null, 'D-7', null]);
+    expect(chordAt(next, 12)).toBe('C^7');
+    survivesSave(next);
+  });
+
+  it('lands cells picked out of order side by side, with their barlines paired', () => {
+    // The first bar's opening and the third's, pasted against each other.
+    const next = pasteCells(chart, 4, copyCells(chart, [0, 8]));
+    expect(chordAt(next, 4)).toBe('C^7');
+    expect(chordAt(next, 5)).toBe('G7');
+    // The `|` now on cell 5 closes cell 4, so cell 4 carries the other half.
+    expect(next[4]!.bars).toContain(')');
+    survivesSave(next);
+  });
+
+  it('grows the chart by whole rows when a paste runs past the end', () => {
+    const next = pasteCells(chart, chart.length - 1, copyCells(chart, [4, 5, 6, 7]));
+    expect(next.length).toBe(chart.length + CELLS_PER_ROW);
+    expect(chordAt(next, chart.length + 1)).toBe('D-7');
+  });
+
+  it('leaves a chart unchanged when it is pasted over itself', () => {
+    // The barline repair has to agree with the tokenizer everywhere, including
+    // round spacers, repeats and a single bar right after a double one.
+    for (const music of [
+      '[T44C^7   |A-7 D-7 |G7   |C^7   Z',
+      '{*AT44C^7   |A-7   }[*BYD-7   |G7   ]|C   Z',
+      'T34C YY|F   |G7   ]Y[C   Z',
+      '[T44C,F,G,C|x  |r|  Z',
+    ]) {
+      const cells = cellsOf(music);
+      const all = cells.map((_, i) => i);
+      expect(pasteCells(cells, 0, copyCells(cells, all)), music).toEqual(cells);
+    }
+  });
+
+  it('clears the chords and keeps the bar structure', () => {
+    const next = clearCells(chart, [4, 6, 99]);
+    expect(chordAt(next, 4)).toBeNull();
+    expect(chordAt(next, 6)).toBeNull();
+    expect(next[4]!.bars).toBe(chart[4]!.bars);
+    expect(chordAt(next, 8)).toBe('G7');
+  });
+
+  it('deletes several cells and closes the gaps', () => {
+    const next = deleteCells(chart, [7, 5]);
+    expect(next.length).toBe(chart.length - 2);
+    expect([4, 5, 6].map((i) => chordAt(next, i))).toEqual(['A-7', 'D-7', 'G7']);
+    survivesSave(next);
+  });
+
+  it('pairs the barline across a gap', () => {
+    // Cell 3 held the closing half of the `|` on cell 4. Remove it, and the
+    // cell that now sits before the barline has to take that half over.
+    const next = deleteCells(chart, [3]);
+    expect(next[2]!.bars).toContain(')');
+    survivesSave(next);
   });
 });

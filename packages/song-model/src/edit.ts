@@ -310,6 +310,91 @@ export function appendRow(cells: readonly Cell[]): Cell[] {
   return next;
 }
 
+/* -------------------------------------------------------------------------
+ * Several cells at once
+ * ---------------------------------------------------------------------- */
+
+/**
+ * Make each `)` agree with the cell after it, the way the tokenizer writes it.
+ *
+ * A cell closes with `)` when the next one opens with any barline: it is this
+ * side's half of the `|`, `[` or `{` written there. Moving cells away from
+ * their neighbours — pasting over them, deleting between them — can leave one
+ * half without the other, drawn in the editor and gone on save or the reverse.
+ * Two things break the pair, and both are left the way the tokenizer leaves
+ * them: a cell already ended by `]`, `}` or `Z` takes no `)`, and a spacer in
+ * front of the next cell makes the two independent.
+ */
+function pairBarlines(cells: Cell[], from: number, to: number): void {
+  for (let i = Math.max(0, from); i <= Math.min(to, cells.length - 1); i++) {
+    const cell = cells[i]!;
+    const following = cells[i + 1];
+    if (following && following.spacer > 0) continue;
+    const ended = /[\]}Z]/.test(cell.bars);
+    const opens = following !== undefined && /[([{]/.test(following.bars);
+    cell.bars = cell.bars.replace(/\)/g, '') + (opens && !ended ? ')' : '');
+  }
+}
+
+/** Indices in chart order, once each, dropping any past the end. */
+function inOrder(indices: readonly number[], length: number): number[] {
+  return [...new Set(indices)].filter((i) => i >= 0 && i < length).sort((a, b) => a - b);
+}
+
+/** Copies of the chosen cells, in chart order, ready to paste somewhere else. */
+export function copyCells(cells: readonly Cell[], indices: readonly number[]): Cell[] {
+  return clone(inOrder(indices, cells.length).map((i) => cells[i]!));
+}
+
+/**
+ * Clear the chords from several cells. Barlines, marks and text stay, which is
+ * what clearing one cell has always done.
+ */
+export function clearCells(cells: readonly Cell[], indices: readonly number[]): Cell[] {
+  const next = clone(cells);
+  for (const i of indices) {
+    const cell = next[i];
+    if (cell) cell.chord = null;
+  }
+  return next;
+}
+
+/**
+ * Write copied cells over the chart from `at` onwards.
+ *
+ * Whole cells go across — barlines, marks and text with the chords — because
+ * copying four bars means copying where they begin and end. Cells that were
+ * picked out of order land side by side. Running past the end of the chart
+ * grows it by whole rows, the shape the grid is drawn in.
+ */
+export function pasteCells(cells: readonly Cell[], at: number, clip: readonly Cell[]): Cell[] {
+  const next = clone(cells);
+  const start = Math.max(0, Math.min(at, next.length));
+  const end = start + clip.length;
+  while (next.length < end) {
+    for (let i = 0; i < CELLS_PER_ROW; i++) next.push(emptyCell());
+  }
+  clone(clip).forEach((cell, i) => {
+    next[start + i] = cell;
+  });
+  pairBarlines(next, start - 1, end - 1);
+  return next;
+}
+
+/** Remove several cells, pulling the rest along to close each gap. */
+export function deleteCells(cells: readonly Cell[], indices: readonly number[]): Cell[] {
+  const drop = new Set(indices);
+  const next: Cell[] = [];
+  // The cell before each gap now sits against a different neighbour.
+  const seams: number[] = [];
+  clone(cells).forEach((cell, i) => {
+    if (!drop.has(i)) next.push(cell);
+    else if (!drop.has(i - 1)) seams.push(next.length - 1);
+  });
+  for (const seam of seams) pairBarlines(next, seam, seam);
+  return next;
+}
+
 /** Write cells back to payload text, ready to be re-encoded into a record. */
 export function toPayload(cells: readonly Cell[]): string {
   return serializeForRoundTrip(cells);

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom';
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
 import type { Cell, Song } from '@unrealchart/ireal-format';
-import { chordToText, tokenize } from '@unrealchart/ireal-format';
+import { chordToText, serialize, tokenize } from '@unrealchart/ireal-format';
 import {
   CELLS_PER_ROW,
   EditHistory,
@@ -11,9 +11,12 @@ import {
   SECTION,
   appendRow,
   buildSongModel,
-  deleteCell,
+  clearCells,
+  copyCells,
+  deleteCells,
   insertCell,
   parseChordInput,
+  pasteCells,
   setAnnotation,
   setChord,
   setCloseBarline,
@@ -162,9 +165,35 @@ export function annotationNodes(annots: readonly string[]): ReactNode[] {
   });
 }
 
+/**
+ * Cells on the clipboard.
+ *
+ * Kept outside the editor so a copy outlives it: carrying a progression from
+ * one chart into another is half the point. The system clipboard gets the
+ * cells' payload text too, and a paste is only taken as these cells when that
+ * text comes back — copy something else in between and that is what pastes.
+ */
+let clipboard: { cells: Cell[]; text: string } | null = null;
+
+function isClipboardText(text: string): boolean {
+  if (!clipboard) return false;
+  return text === clipboard.text || (text.trim() !== '' && text.trim() === clipboard.text.trim());
+}
+
+/** Every index from one to the other, in order, whichever comes first. */
+function span(from: number, to: number): number[] {
+  const out: number[] = [];
+  for (let i = Math.min(from, to); i <= Math.max(from, to); i++) out.push(i);
+  return out;
+}
+
 export interface EditorProps {
   song: Song;
-  onSave: (payload: string) => void;
+  /**
+   * Save the chart. `payload` is null when only the title changed, so a rename
+   * leaves the music exactly as it was written.
+   */
+  onSave: (payload: string | null, title: string) => void;
   onClose: () => void;
   /**
    * Where the Editor's controls belong. iReal Pro puts them in the right-hand
@@ -186,6 +215,15 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
   const [cursor, setCursor] = useState(0);
   const [draft, setDraft] = useState('');
   const [dirty, setDirty] = useState(false);
+  const [title, setTitle] = useState(song.title);
+  /*
+   * The picked cells, in chart order, always including the cursor. The anchor
+   * is where a Shift-extended range starts from: the last cell picked on its
+   * own.
+   */
+  const [selection, setSelection] = useState<number[]>([0]);
+  const anchorRef = useRef(0);
+  const [hasClip, setHasClip] = useState(clipboard !== null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Start again when a different song is opened.
@@ -196,7 +234,20 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
     setCursor(0);
     setDraft(chordTextOf(fresh[0]));
     setDirty(false);
+    setTitle(song.title);
+    setSelection([0]);
+    anchorRef.current = 0;
   }, [song]);
+
+  // Undo can shorten the chart from under the cursor and the selection.
+  useEffect(() => {
+    const last = Math.max(0, cells.length - 1);
+    setCursor((c) => Math.min(c, last));
+    setSelection((picked) => {
+      const kept = picked.filter((i) => i <= last);
+      return kept.length > 0 ? kept : [last];
+    });
+  }, [cells.length]);
 
   /*
    * Select the box's contents when the cursor lands on a cell.
@@ -233,6 +284,8 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
     return out;
   }, [cells]);
 
+  const picked = useMemo(() => new Set(selection), [selection]);
+
   const fitRef = useRef<HTMLDivElement>(null);
   const [cellPx, setCellPx] = useState(28);
 
@@ -257,15 +310,88 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
     return () => observer.disconnect();
   }, [rows.length]);
 
+  /** Move the cursor; with `extend`, the selection stretches from the anchor to it. */
   const move = useCallback(
-    (delta: number) => {
-      setCursor((c) => {
-        const next = Math.max(0, Math.min(cells.length - 1, c + delta));
-        setDraft(chordTextOf(cells[next]));
-        return next;
-      });
+    (delta: number, extend = false) => {
+      const next = Math.max(0, Math.min(cells.length - 1, cursor + delta));
+      setCursor(next);
+      setDraft(chordTextOf(cells[next]));
+      if (!extend) anchorRef.current = next;
+      setSelection(span(anchorRef.current, next));
     },
-    [cells],
+    [cells, cursor],
+  );
+
+  /** A click picks one cell; Shift stretches from the anchor; Ctrl (⌘) adds or removes one. */
+  const pick = useCallback(
+    (index: number, how: 'only' | 'extend' | 'toggle') => {
+      let next = index;
+      if (how === 'extend') {
+        setSelection(span(anchorRef.current, index));
+      } else if (how === 'toggle' && selection.includes(index) && selection.length > 1) {
+        // Dropping the cursor's own cell hands the cursor to one still picked.
+        const rest = selection.filter((i) => i !== index);
+        next = rest[rest.length - 1]!;
+        anchorRef.current = next;
+        setSelection(rest);
+      } else if (how === 'toggle') {
+        anchorRef.current = index;
+        setSelection([...new Set([...selection, index])].sort((a, b) => a - b));
+      } else {
+        anchorRef.current = index;
+        setSelection([index]);
+      }
+      setCursor(next);
+      setDraft(chordTextOf(cells[next]));
+    },
+    [cells, selection],
+  );
+
+  /* Several cells at once. Each acts on the whole selection, one cell or many. */
+
+  const copySelection = useCallback(() => {
+    const copied = copyCells(cells, selection);
+    clipboard = { cells: copied, text: serialize(copied) };
+    setHasClip(true);
+    return clipboard.text;
+  }, [cells, selection]);
+
+  const clearSelection = useCallback(() => {
+    commit(selection.length > 1 ? 'Clear cells' : 'Clear cell', clearCells(cells, selection));
+    setDraft('');
+  }, [cells, selection, commit]);
+
+  /** Paste over the chart from the first picked cell, then pick what landed. */
+  const pasteClipboard = useCallback(() => {
+    if (!clipboard || clipboard.cells.length === 0) return;
+    const at = Math.min(...selection);
+    const next = pasteCells(cells, at, clipboard.cells);
+    commit('Paste', next);
+    anchorRef.current = at;
+    setSelection(span(at, at + clipboard.cells.length - 1));
+    setCursor(at);
+    setDraft(chordTextOf(next[at]));
+  }, [cells, selection, commit]);
+
+  /** Take the picked cells out of the chart, closing the gaps behind them. */
+  const removeSelection = useCallback(() => {
+    const next = deleteCells(cells, selection);
+    commit(selection.length > 1 ? 'Delete cells' : 'Delete cell', next);
+    const at = Math.max(0, Math.min(Math.min(...selection), next.length - 1));
+    anchorRef.current = at;
+    setSelection([at]);
+    setCursor(at);
+    setDraft(chordTextOf(next[at]));
+  }, [cells, selection, commit]);
+
+  /** Copy for a button press: no clipboard event to write into, so ask the browser. */
+  const copyToSystem = useCallback(
+    (cut: boolean) => {
+      const text = copySelection();
+      void navigator.clipboard?.writeText(text).catch(() => undefined);
+      if (cut) clearSelection();
+    },
+    [copySelection, clearSelection],
   );
 
   const commitDraft = useCallback(
@@ -306,7 +432,22 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
     [draft, cells, cursor, commit, move],
   );
 
-  // Keyboard: arrows navigate, typing edits, Ctrl+Z undoes.
+  /*
+   * Whether a key belongs to the grid or to the text in the chord box.
+   *
+   * The box has focus nearly all the time, so "is the box focused" cannot be
+   * the test. The box owns its keys only while it holds text of the user's
+   * own: once they have typed, Ctrl+C copies what they typed. While it still
+   * shows the cell's chord untouched, or several cells are picked, there is no
+   * text to act on, and Ctrl+C means the cells.
+   */
+  const gridOwns = useCallback(
+    (target: EventTarget | null) =>
+      target !== inputRef.current || selection.length > 1 || draft === chordTextOf(cells[cursor]),
+    [selection, draft, cells, cursor],
+  );
+
+  // Keyboard: arrows navigate (Shift extends), typing edits, Ctrl+Z undoes.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const modifier = event.ctrlKey || event.metaKey;
@@ -316,32 +457,58 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
         setDirty(true);
         return;
       }
-      if (modifier) return;
-      // Anything else while the chord box has focus belongs to the chord box.
-      if (document.activeElement === inputRef.current && event.key.length === 1) return;
+
+      // The other fields -- a cell's text, the dropdowns -- keep their own keys.
+      // Backspace in the text box used to clear the cell's chord, not a letter.
+      const target = event.target as HTMLElement | null;
+      const inBox = target === inputRef.current;
+      if (!inBox && target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+
+      if (modifier) {
+        const key = event.key.toLowerCase();
+        if (key === 'a' && gridOwns(target)) {
+          event.preventDefault();
+          anchorRef.current = 0;
+          setSelection(span(0, cells.length - 1));
+        }
+        // In the chord box, copy and paste arrive as clipboard events, which
+        // can read and write the system clipboard -- see below. Anywhere else
+        // there may be no such event at all, so the keys are taken here.
+        if (!inBox && (key === 'c' || key === 'x')) {
+          event.preventDefault();
+          copyToSystem(key === 'x');
+        }
+        if (!inBox && key === 'v' && clipboard) {
+          event.preventDefault();
+          pasteClipboard();
+        }
+        return;
+      }
+      // Anything else typed while the chord box has focus belongs to the chord box.
+      if (inBox && event.key.length === 1) return;
 
       switch (event.key) {
         case 'ArrowRight':
           event.preventDefault();
-          move(1);
+          move(1, event.shiftKey);
           break;
         case 'ArrowLeft':
           event.preventDefault();
-          move(-1);
+          move(-1, event.shiftKey);
           break;
         case 'ArrowDown':
           event.preventDefault();
-          move(CELLS_PER_ROW);
+          move(CELLS_PER_ROW, event.shiftKey);
           break;
         case 'ArrowUp':
           event.preventDefault();
-          move(-CELLS_PER_ROW);
+          move(-CELLS_PER_ROW, event.shiftKey);
           break;
         case 'Delete':
         case 'Backspace':
-          if (document.activeElement === inputRef.current && draft !== '') return;
+          if (inBox && selection.length === 1 && draft !== '') return;
           event.preventDefault();
-          commit('Clear cell', setChord(cells, cursor, null));
+          clearSelection();
           break;
         case 'Escape':
           event.preventDefault();
@@ -353,7 +520,34 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [cells, cursor, draft, move, commit, onClose]);
+  }, [cells, selection, draft, move, gridOwns, copyToSystem, clearSelection, pasteClipboard, onClose]);
+
+  // Copy, cut and paste from the chord box, when the cells own them.
+  useEffect(() => {
+    const fromBox = (event: ClipboardEvent) =>
+      event.target === inputRef.current && gridOwns(event.target);
+    const onCopy = (event: ClipboardEvent) => {
+      if (!fromBox(event) || !event.clipboardData) return;
+      event.preventDefault();
+      event.clipboardData.setData('text/plain', copySelection());
+      if (event.type === 'cut') clearSelection();
+    };
+    const onPaste = (event: ClipboardEvent) => {
+      if (!fromBox(event)) return;
+      // Text from anywhere else goes into the box, as typed.
+      if (!isClipboardText(event.clipboardData?.getData('text/plain') ?? '')) return;
+      event.preventDefault();
+      pasteClipboard();
+    };
+    window.addEventListener('copy', onCopy);
+    window.addEventListener('cut', onCopy);
+    window.addEventListener('paste', onPaste);
+    return () => {
+      window.removeEventListener('copy', onCopy);
+      window.removeEventListener('cut', onCopy);
+      window.removeEventListener('paste', onPaste);
+    };
+  }, [gridOwns, copySelection, clearSelection, pasteClipboard]);
 
   const cell = cells[cursor];
   const openKind: OpenBarline = cell?.bars.includes('{')
@@ -390,8 +584,35 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
       </p>
     );
 
+  // A blank title is not a rename: it keeps the one the chart has.
+  const nextTitle = title.trim() || song.title;
+  const changed = dirty || nextTitle !== song.title;
+
   const panel = (
     <div className="editor-panel">
+      <div className="tool">
+        <span className="label">Title</span>
+        <input
+          className="title-input"
+          value={title}
+          placeholder={song.title}
+          aria-label="Chart title"
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => {
+            // Its keys are its own -- Ctrl+Z here undoes typing, not the grid.
+            e.stopPropagation();
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              inputRef.current?.focus();
+            }
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              setTitle(song.title);
+            }
+          }}
+        />
+      </div>
+
       <div className="editor-bar">
         <strong>Editing</strong>
         <input
@@ -441,10 +662,10 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
         <button
           type="button"
           className="save"
-          onClick={() => onSave(toPayload(cells))}
-          disabled={!dirty}
+          onClick={() => onSave(dirty ? toPayload(cells) : null, nextTitle)}
+          disabled={!changed}
         >
-          {dirty ? 'Save' : 'Saved'}
+          {changed ? 'Save' : 'Saved'}
         </button>
         <button type="button" onClick={onClose}>
           Done
@@ -452,6 +673,31 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
       </div>
 
       <div className="editor-tools">
+        <div className="tool">
+          <span className="label">
+            {selection.length > 1
+              ? `${selection.length} cells selected`
+              : 'Selection — Shift- or Ctrl-click to pick more'}
+          </span>
+          <button type="button" onClick={() => copyToSystem(false)} title="Copy (Ctrl+C)">
+            copy
+          </button>
+          <button type="button" onClick={() => copyToSystem(true)} title="Cut the chords (Ctrl+X)">
+            cut
+          </button>
+          <button
+            type="button"
+            onClick={pasteClipboard}
+            disabled={!hasClip}
+            title="Paste from the first selected cell on (Ctrl+V)"
+          >
+            paste
+          </button>
+          <button type="button" onClick={clearSelection} title="Clear the chords (Delete)">
+            clear
+          </button>
+        </div>
+
         <div className="tool">
           <span className="label">Bar opens</span>
           {OPEN_BARS.map(([kind, glyph]) => (
@@ -570,7 +816,11 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
           <button type="button" onClick={() => commit('Insert cell', insertCell(cells, cursor))}>
             insert
           </button>
-          <button type="button" onClick={() => commit('Delete cell', deleteCell(cells, cursor))}>
+          <button
+            type="button"
+            onClick={removeSelection}
+            title="Remove the selected cells; the rest move back to fill the gap"
+          >
             delete
           </button>
           <button type="button" onClick={() => commit('Add row', appendRow(cells))}>
@@ -601,6 +851,7 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
               const index = r * CELLS_PER_ROW + i;
               const classes = ['gridcell'];
               if (index === cursor) classes.push('selected');
+              else if (picked.has(index)) classes.push('picked');
               if (c.bars.includes('(')) classes.push('bar-single');
               if (c.bars.includes('[')) classes.push('bar-double');
               if (c.bars.includes('{')) classes.push('bar-repeat');
@@ -612,9 +863,8 @@ export function Editor({ song, onSave, onClose, panelHost = null }: EditorProps)
                   type="button"
                   className={classes.join(' ')}
                   key={index}
-                  onClick={() => {
-                    setCursor(index);
-                    setDraft(chordTextOf(c));
+                  onClick={(e) => {
+                    pick(index, e.shiftKey ? 'extend' : e.ctrlKey || e.metaKey ? 'toggle' : 'only');
                     inputRef.current?.focus();
                   }}
                 >

@@ -197,7 +197,7 @@ Repeat directives found inside comments: `D.C. al Coda`, `D.C. al Fine`,
 ## 4b. Writing cells back out
 
 The editor mutates cells and has to write them back, which is the inverse of
-tokenizing. Three things are not obvious:
+tokenizing. Four things are not obvious:
 
 - **Spacers come before the barline.** `Y` clears the tokenizer's memory of the
   previous cell, which is what stops a following `|` from also closing the bar
@@ -209,6 +209,21 @@ tokenizing. Three things are not obvious:
 - **A closing bracket supersedes a plain barline.** Setting `}` on a cell that a
   `|` already closed has to remove both halves of that `|`, or the cell ends up
   closed by two barlines at once — a state no chart parses into.
+- **Neighbouring chords are separated by a comma.** `Ab9,Ao` is how iReal Pro
+  writes two chords in adjacent cells. Our tokenizer can split `Ab9Ao` without
+  it; iReal Pro's own payloads all but never leave it out, so neither do we.
+
+When a record is written out — an edit saved, a chart exported — two more
+rules keep it importable:
+
+- **One URI, one scheme.** Every record in a link is read with that scheme's
+  field layout. A library holds both (imports keep theirs; a chart written here
+  is legacy), so export rewrites each record for the link's scheme rather than
+  filing a legacy record under `irealb://`.
+- **No two empty fields in a row.** Three `=` in a row is the song separator.
+  The modern layout's slot 2 is always empty, so the composer never may be —
+  iReal Pro's own charts say `Composer Unknown` — and an unset tempo and repeat
+  count are written `0`, never left empty at the end of the record.
 
 Byte-identity with iReal Pro's own writer is neither achievable nor needed: the
 cell model does not record whether `*A[T44` was written with the section before

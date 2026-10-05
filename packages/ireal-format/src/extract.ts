@@ -27,6 +27,30 @@ export class IRealFormatError extends Error {
   override name = 'IRealFormatError';
 }
 
+/**
+ * Every iReal link in a piece of text, each cut where it ends.
+ *
+ * For pasted text — a forum post, a message — where a link is followed by more
+ * words or by more links. `extractPayload` reads to the end of the line, which
+ * is right for an export and wrong here: `irealb://…%3D1 enjoy!` would file
+ * " enjoy!" into the repeat count.
+ *
+ * An encoded link ends at the first space, quote or angle bracket, none of
+ * which percent-encoding ever leaves bare. A link pasted already decoded has
+ * real spaces in it, so it runs to the end of the line as in an export. Either
+ * way a link ends where the next one begins. A link that appears twice — an
+ * anchor whose text is its own href — is kept once.
+ */
+export function findLinks(text: string): string[] {
+  const starts = [...text.matchAll(/irealb(?:ook)?:\/\//g)].map((m) => m.index);
+  const links = starts.map((start, i) => {
+    const rest = text.slice(start, starts[i + 1] ?? text.length);
+    const end = rest.search(/%3D/i.test(rest) ? /[\s"<>]/ : /["\r\n]/);
+    return (end < 0 ? rest : rest.slice(0, end)).trim();
+  });
+  return [...new Set(links.filter((link) => /^irealb(?:ook)?:\/\/\S/.test(link)))];
+}
+
 /** Extract and URL-decode the payload. Throws if no iReal URI is present. */
 export function extractPayload(input: string): ExtractedPayload {
   const match = URI_RE.exec(input);

@@ -3,6 +3,7 @@ import {
   chordToText,
   parsePlaylist,
   replaceMusic,
+  replaceTitle,
   serialize,
   serializeForRoundTrip,
   tokenize,
@@ -145,5 +146,73 @@ describe('replaceMusic', () => {
     const multi = `${legacy}===${legacy}`;
     const next = replaceMusic(multi, 'irealbook', '[T44C^7   Z');
     expect(next).not.toContain('===');
+  });
+
+  it('fills unset slots the way iReal Pro does, never with an empty tempo', () => {
+    // Empty tempo and repeat fields end the record in `===`, which is the
+    // separator between songs.
+    const short = ['T', 'C', '', 'Style', 'C', '', '1r34LbKcu7xx'].join('=');
+    const next = replaceMusic(short, 'irealb', '[T44C^7   Z');
+    expect(next.split('=').slice(7)).toEqual(['', '0', '0']);
+    expect(next.endsWith('=')).toBe(false);
+  });
+});
+
+describe('separating chords', () => {
+  it('puts a comma between chords in neighbouring cells, as iReal Pro writes them', () => {
+    const cells = tokenize('[T44C^7,A-7,D-7,G7 Z');
+    const text = serialize(cells);
+    expect(text).toContain('C^7,A-7,D-7,G7');
+    expect(tokenize(text)).toEqual(cells);
+  });
+
+  it('writes no comma where a barline or a space already separates them', () => {
+    const text = serialize(tokenize('[T44C^7 |A-7 D-7 Z'));
+    expect(text).not.toContain(',');
+  });
+
+  it('writes no comma in front of something written before the chord', () => {
+    const text = serialize(tokenize('[T44C^7*BA-7 Z'));
+    expect(text).toContain('C^7*BA-7');
+  });
+});
+
+describe('replaceTitle', () => {
+  const legacy = ['All Your Love', 'Rush Otis', 'Slow Blues', 'E-', 'n', '[T44E-   Z'].join('=');
+  const read = (record: string) =>
+    parsePlaylist(`irealbook://${encodeURIComponent(record)}`).songs[0]!;
+
+  it('changes the title and nothing else', () => {
+    const next = replaceTitle(legacy, 'Still Got the Blues');
+    expect(next.split('=')).toEqual(['Still Got the Blues', ...legacy.split('=').slice(1)]);
+    expect(read(next).composer).toBe('Otis Rush');
+  });
+
+  it('stores a leading article the way the format sorts it', () => {
+    const next = replaceTitle(legacy, 'The Gentle Rain');
+    expect(next.split('=')[0]).toBe('Gentle Rain, The');
+    expect(read(next).title).toBe('The Gentle Rain');
+  });
+
+  it('drops the field separator rather than splitting the record', () => {
+    const next = replaceTitle(legacy, '  E=mc2   Blues ');
+    expect(next.split('=')).toHaveLength(6);
+    expect(read(next).title).toBe('Emc2 Blues');
+  });
+
+  it('renames a modern record without touching its music', () => {
+    const modern = ['T', 'C', '', 'Style', 'C', '0', '1r34LbKcu7xx', 'Groove', '120', '3'].join('=');
+    const next = replaceTitle(modern, 'New Name');
+    expect(next).toBe(modern.replace(/^T=/, 'New Name='));
+  });
+
+  it('keeps a multi-part song in one piece once it is collapsed first', () => {
+    const first = ['Long Tune 1', 'Anon', 'Ballad', 'C', 'n', '[T44C^7   |F7   Z'].join('=');
+    const second = ['Long Tune 2', 'Anon', 'Ballad', 'C', 'n', '[T44G7   |C^7   Z'].join('=');
+    const song = read(`${first}===${second}`);
+    const next = replaceTitle(replaceMusic(song.record, 'irealbook', song.music), 'Renamed');
+    const back = parsePlaylist(`irealbook://${encodeURIComponent(next)}`).songs;
+    expect(back.map((s) => s.title)).toEqual(['Renamed']);
+    expect(back[0]!.music).toBe(song.music);
   });
 });

@@ -72,9 +72,28 @@ export function serialize(cells: readonly Cell[]): string {
     for (const comment of cell.comments) out += `<${comment}>`;
     out += cell.chord ? chordToText(cell.chord) : ' ';
     out += closingBarline(cell.bars);
+
+    // Two chords in neighbouring cells with nothing written between them are
+    // separated by a comma, as iReal Pro writes them. Our tokenizer can split
+    // `Ab9Ao` without one; iReal Pro is not ours to test, and its own payloads
+    // all but never leave it out.
+    if (cell.chord && closingBarline(cell.bars) === '' && startsWithChord(cells[i + 1])) out += ',';
   }
 
   return out;
+}
+
+/** Whether a cell's text begins with its chord: nothing written in front of it. */
+function startsWithChord(cell: Cell | undefined): boolean {
+  return (
+    cell !== undefined &&
+    cell.chord !== null &&
+    cell.chord.note !== ' ' &&
+    cell.spacer === 0 &&
+    openingBarline(cell.bars) === '' &&
+    cell.annots.length === 0 &&
+    cell.comments.length === 0
+  );
 }
 
 /**
@@ -110,7 +129,42 @@ export function replaceMusic(record: string, scheme: Scheme, payload: string): s
     return parts.join('=');
   }
 
-  while (parts.length < 10) parts.push('');
+  while (parts.length < MODERN_UNSET.length) parts.push(MODERN_UNSET[parts.length]!);
   parts[6] = `${MUSIC_MARKER}${scramble(payload)}`;
+  return parts.join('=');
+}
+
+/**
+ * What a modern record holds in a slot it never set, as iReal Pro writes it:
+ * transpose and groove empty, tempo and repeat count `0`. Never an empty tempo
+ * and repeat count — three empty fields at the end of a record read as the
+ * `===` between songs.
+ */
+export const MODERN_UNSET: readonly string[] = ['', '', '', '', '', '', '', '', '0', '0'];
+
+/**
+ * A title as the format stores it, which is not quite how it reads.
+ *
+ * A leading article goes to the end — "The Gentle Rain" is stored as
+ * "Gentle Rain, The" — so it sorts under G in iReal Pro's list as well as ours;
+ * `parseTitle` moves it back on the way in. `=` is the field separator and has
+ * no escape, so it is dropped rather than allowed to split the record.
+ */
+export function storedTitle(title: string): string {
+  const clean = title.replace(/=/g, '').replace(/\s+/g, ' ').trim();
+  return clean.replace(/^(A|An|The) (.+)$/, '$2, $1');
+}
+
+/**
+ * Replace the title in a song record, leaving every other field exactly as it
+ * was — the same rule as `replaceMusic`, for the same reason.
+ *
+ * Only the first part of a multi-part record is renamed, and the parts after
+ * it would then stop reading as its continuation: the song would come back as
+ * two. Collapse such a record with `replaceMusic` before renaming it.
+ */
+export function replaceTitle(record: string, title: string): string {
+  const parts = record.split('=');
+  parts[0] = storedTitle(title);
   return parts.join('=');
 }

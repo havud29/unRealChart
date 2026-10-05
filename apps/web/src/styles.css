@@ -1426,6 +1426,43 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   color: var(--accent-ink);
 }
 .pop-share button, .pop-style button { width: 100%; }
+
+/* Import: a file, or a link pasted from the forum. */
+.pop-import { width: 280px; }
+.pop-file {
+  padding: 5px 8px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--chrome);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.pop-file:hover { border-color: var(--accent-text); }
+.pop-file input { display: none; }
+.pop-file span { color: var(--ink-2); }
+.pop-link { display: flex; gap: 4px; }
+.pop-link input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 7px;
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 11.5px;
+}
+.pop-link button {
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.pop-link button:disabled { opacity: 0.45; cursor: default; }
+.pop-problem { margin: 0; font-size: 11px; color: var(--danger); }
+.pop-hint { margin: 2px 0 0; font-size: 10.5px; color: var(--ink-2); }
 .pop-key { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 210px; }
 .pop-key button { text-align: center; position: relative; padding: 6px 4px; }
 .pop-default {
@@ -1554,7 +1591,8 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
 }
 .tool button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .tool select,
-.comment-input {
+.comment-input,
+.title-input {
   padding: 2px 5px;
   border: 1px solid var(--rule);
   border-radius: 5px;
@@ -1563,6 +1601,7 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   font-size: 11.5px;
 }
 .comment-input { flex: 1; min-width: 0; }
+.title-input { width: 100%; padding: 4px 8px; font-size: 13px; font-weight: 600; color: var(--ink); }
 
 .editor-warnings { margin: 4px 0 0; padding-left: 16px; font-size: 11px; color: var(--danger); }
 .editor-ok { margin: 4px 0 0; font-size: 11px; color: var(--ink-2); }
@@ -1576,6 +1615,8 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
   color: var(--paper-ink);
   border: 1px solid color-mix(in srgb, var(--paper-ink) 22%, transparent);
   box-shadow: 0 1px 10px -4px rgba(0, 0, 0, 0.4);
+  /* Shift-clicking picks cells; it must not also drag a text selection across them. */
+  user-select: none;
 }
 .cellrow { display: grid; grid-template-columns: repeat(16, 1fr); height: calc(var(--cell) * 2.3); }
 .gridcell {
@@ -1599,6 +1640,7 @@ input[type="range"]:hover::-moz-range-thumb { border-color: var(--accent); }
 }
 .gridcell:hover { background: color-mix(in srgb, var(--paper-ink) 7%, transparent); }
 .gridcell.selected { background: color-mix(in srgb, var(--accent) 32%, transparent); }
+.gridcell.picked { background: color-mix(in srgb, var(--accent) 16%, transparent); }
 .gridcell.bar-single { border-left-color: currentColor; }
 .gridcell.bar-double { border-left: 3px double currentColor; }
 .gridcell.bar-repeat { border-left: 3px double var(--paper-red); }

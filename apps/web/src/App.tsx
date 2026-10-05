@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { parsePlaylist, replaceMusic, scramble, toHtml } from '@unrealchart/ireal-format';
+import {
+  findLinks,
+  parsePlaylist,
+  replaceMusic,
+  replaceTitle,
+  scramble,
+  toHtml,
+} from '@unrealchart/ireal-format';
 import type { Playlist, Song } from '@unrealchart/ireal-format';
 import {
   INSTRUMENT_OFFSETS,
@@ -49,6 +56,17 @@ const DEMO_URI = `irealb://${encodeURIComponent(
     '3',
   ].join('=') + '===Demo',
 )}`;
+
+/** The demo chart as library entries, standing in until anything is stored. */
+function demoEntries(): LibraryEntry[] {
+  const demo = parsePlaylist(DEMO_URI);
+  return demo.songs.map((song, i) => ({
+    id: `demo-${i}`,
+    song,
+    playlist: null,
+    scheme: demo.scheme,
+  }));
+}
 
 const HORN_KEYS: InstrumentKey[] = ['C', 'Bb', 'Eb', 'F'];
 
@@ -195,14 +213,7 @@ function useNarrow(): boolean {
 export function App() {
   const library = useRef(createLibrary()).current;
 
-  const [entries, setEntries] = useState<LibraryEntry[]>(() =>
-    parsePlaylist(DEMO_URI).songs.map((song, i) => ({
-      id: `demo-${i}`,
-      song,
-      playlist: null,
-    })),
-  );
-  const [scheme, setScheme] = useState<'irealb' | 'irealbook'>('irealb');
+  const [entries, setEntries] = useState<LibraryEntry[]>(demoEntries);
   const [restored, setRestored] = useState(false);
   const [source, setSource] = useState('songs');
   const [sort, setSort] = useState<'title' | 'composer' | 'style'>('title');
@@ -218,7 +229,12 @@ export function App() {
   // Panes
   const [showSources, setShowSources] = useState(true);
   const [showPanel, setShowPanel] = useState(true);
-  const [menu, setMenu] = useState<null | 'settings' | 'share' | 'add' | 'key' | 'style'>(null);
+  const [menu, setMenu] = useState<
+    null | 'settings' | 'share' | 'import' | 'add' | 'key' | 'style'
+  >(null);
+  // The Import menu's link box, and why the last thing put in it was not a link.
+  const [linkDraft, setLinkDraft] = useState('');
+  const [linkProblem, setLinkProblem] = useState<string | null>(null);
   const [panelHost, setPanelHost] = useState<HTMLElement | null>(null);
 
   // Chart appearance — reading preferences, stored per device, exactly as
@@ -294,10 +310,7 @@ export function App() {
         await library.add(playlist);
         await library.setSetting(SEED_SETTING, 'done');
         const stored = await library.all();
-        if (stored.length > 0) {
-          setEntries(stored);
-          setScheme(playlist.scheme);
-        }
+        if (stored.length > 0) setEntries(stored);
         setSeeding(null);
       } catch (e) {
         setSeeding(e instanceof Error ? e.message : String(e));
@@ -380,7 +393,7 @@ export function App() {
       // silently overwrites the last. An authored chart is a new thing by
       // definition, so it gets an identity of its own.
       const id = `new-${crypto.randomUUID?.() ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`}`;
-      // Saved as `irealbook`, never as the library's current scheme. The stored
+      // Saved as `irealbook`, the scheme its record is written in. The stored
       // URI is the song's own record, and a new chart's record is plain text --
       // filing it under `irealb` would claim it was scrambled, and the reparse
       // on the next load would throw and drop the song without a word.
@@ -621,17 +634,39 @@ export function App() {
 
   async function importFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    await importTexts(
+      Array.from(files).map((f) => f.text()),
+      files.length === 1 ? 'that file' : 'those files',
+    );
+  }
+
+  /**
+   * Import every iReal Pro link in a piece of text -- one pasted from the
+   * forum, a message, a page. Says whether there was a link to import.
+   */
+  function importLinks(text: string): boolean {
+    const links = findLinks(text);
+    if (links.length === 0) return false;
+    void importTexts(links, links.length === 1 ? 'that link' : 'those links');
+    return true;
+  }
+
+  /** Add what each source holds to the library, then open the first song. */
+  async function importTexts(sources: Array<string | Promise<string>>, what: string) {
     setError(null);
     try {
-      const texts = await Promise.all(Array.from(files).map((f) => f.text()));
-      const parsed = texts.map((t) => parsePlaylist(t));
+      const parsed = (await Promise.all(sources)).map((t) => parsePlaylist(t));
       if (parsed.every((p) => p.songs.length === 0)) {
-        throw new Error('No songs found in that file.');
+        // A link copied short has a record that fails, which says more than
+        // "no songs" does.
+        const failure = parsed.flatMap((p) => p.failures)[0];
+        throw new Error(
+          failure ? `Could not read ${what}: ${failure.message}` : `No songs found in ${what}.`,
+        );
       }
       // Keep what is already there: importing a second playlist adds to the
       // library rather than replacing it, which is what a user expects.
       for (const p of parsed) await library.add(p);
-      setScheme(parsed[0]!.scheme);
       const stored = await library.all();
       if (stored.length > 0) setEntries(stored);
       const name = parsed.find((p) => p.name)?.name;
@@ -653,15 +688,29 @@ export function App() {
     }
   }
 
-  function saveEdit(payload: string) {
+  function saveEdit(payload: string | null, title: string) {
     if (!song || !selected) return;
+    // The song's own scheme, never one shared across the library: a chart
+    // written here is legacy plain text, and re-encoding it as modern read its
+    // style from the key slot and its key from the `n` placeholder.
+    const { scheme } = selected;
     void (async () => {
-      // Swap the music into the record the song came from and reparse, so every
-      // other field stays byte-identical. Rebuilding the record from parsed
-      // fields would reverse a two-word composer on every save.
-      const record = replaceMusic(song.record, scheme, payload);
+      // Swap what changed into the record the song came from and reparse, so
+      // every other field stays byte-identical. Rebuilding the record from
+      // parsed fields would reverse a two-word composer on every save.
+      const renamed = title !== song.title;
+      // Renaming only the first part of a multi-part record would leave the
+      // rest no longer reading as its continuation, and the song would come
+      // back as two. Collapse it first, with the music it already has.
+      const music = payload ?? (renamed && song.record.includes('===') ? song.music : null);
+      let record = song.record;
+      if (music !== null) record = replaceMusic(record, scheme, music);
+      if (renamed) record = replaceTitle(record, title);
       const edited = parsePlaylist(`${scheme}://${encodeURIComponent(record)}`).songs[0];
-      if (!edited) return;
+      if (!edited) {
+        setError('That edit could not be saved: the chart did not read back.');
+        return;
+      }
       await library.save(selected.id, edited, scheme, selected.playlist);
       const stored = await library.all();
       if (stored.length > 0) {
@@ -674,6 +723,26 @@ export function App() {
       }
     })();
   }
+
+  /*
+   * Paste a copied link anywhere to import it -- the way songs arrive from the
+   * forum. Not into a text field, which wants the text, and not while editing,
+   * where Ctrl+V pastes cells.
+   */
+  useEffect(() => {
+    const onPaste = (event: ClipboardEvent) => {
+      if (editing) return;
+      const target = event.target as HTMLElement | null;
+      if (target && (/^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable)) {
+        return;
+      }
+      // Only the setters and the library are reached from here, so the first
+      // render's `importLinks` is as good as the latest.
+      if (importLinks(event.clipboardData?.getData('text/plain') ?? '')) event.preventDefault();
+    };
+    window.addEventListener('paste', onPaste);
+    return () => window.removeEventListener('paste', onPaste);
+  }, [editing]);
 
   // Keyboard, the way iReal Pro does it: Space plays, the brackets step the
   // repeats, the dashes step the tempo. Never while a field has focus.
@@ -795,7 +864,9 @@ export function App() {
       onDrop={(e) => {
         e.preventDefault();
         setDragging(false);
-        void importFiles(e.dataTransfer.files);
+        // A link dragged off a forum page arrives as text, not as a file.
+        if (e.dataTransfer.files.length > 0) void importFiles(e.dataTransfer.files);
+        else importLinks(e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain'));
       }}
     >
       <header className="titlebar">
@@ -834,15 +905,14 @@ export function App() {
           >
             +
           </button>
-          <label className="tb-btn" title="Import a playlist">
-            <input
-              type="file"
-              multiple
-              accept=".html,.htm,.txt"
-              onChange={(e) => void importFiles(e.target.files)}
-            />
+          <button
+            type="button"
+            className={`tb-btn${menu === 'import' ? ' on' : ''}`}
+            onClick={() => setMenu(menu === 'import' ? null : 'import')}
+            title="Import a playlist or a link"
+          >
             <span className="icon-import" />
-          </label>
+          </button>
           <button
             type="button"
             className={`tb-btn${editing ? ' on' : ''}`}
@@ -960,7 +1030,7 @@ export function App() {
                   ? 'Opening library…'
                   : seeding === 'loading'
                     ? `Fetching ${DEFAULT_LIBRARY.name}…`
-                    : 'No playlists yet. Drop an iReal Pro .html or .txt export anywhere to add one.'}
+                    : 'No playlists yet. Drop an iReal Pro .html or .txt export anywhere, or paste an irealb:// link, to add one.'}
               </p>
             ) : null}
 
@@ -981,13 +1051,7 @@ export function App() {
                 className="src-foot"
                 onClick={() =>
                   void library.clear().then(() => {
-                    setEntries(
-                      parsePlaylist(DEMO_URI).songs.map((s, i) => ({
-                        id: `demo-${i}`,
-                        song: s,
-                        playlist: null,
-                      })),
-                    );
+                    setEntries(demoEntries());
                     setSource('songs');
                     setSelectedId(null);
                   })
@@ -1486,6 +1550,61 @@ export function App() {
         </div>
       ) : null}
 
+      {menu === 'import' ? (
+        <div className="popover pop-import">
+          <label className="pop-file">
+            <input
+              type="file"
+              multiple
+              accept=".html,.htm,.txt"
+              onChange={(e) => {
+                void importFiles(e.target.files);
+                setMenu(null);
+              }}
+            />
+            Choose a file… <span>.html or .txt export</span>
+          </label>
+
+          <p className="pop-group">Or paste a link</p>
+          <form
+            className="pop-link"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (importLinks(linkDraft)) {
+                setLinkDraft('');
+                setLinkProblem(null);
+                setMenu(null);
+              } else {
+                setLinkProblem(
+                  /^\s*https?:\/\//i.test(linkDraft)
+                    ? 'That is a web page. Copy the song link inside the post instead — it starts with irealb://.'
+                    : 'No iReal Pro link in that. It starts with irealb:// or irealbook://.',
+                );
+              }
+            }}
+          >
+            <input
+              value={linkDraft}
+              onChange={(e) => {
+                setLinkDraft(e.target.value);
+                setLinkProblem(null);
+              }}
+              placeholder="irealb://…"
+              aria-label="iReal Pro link"
+              autoFocus
+            />
+            <button type="submit" disabled={linkDraft.trim() === ''}>
+              Import
+            </button>
+          </form>
+          {linkProblem ? <p className="pop-problem">{linkProblem}</p> : null}
+          <p className="pop-hint">
+            A copied link also imports with Ctrl+V anywhere outside a text box. Several links at
+            once work too.
+          </p>
+        </div>
+      ) : null}
+
       {menu === 'share' && song && model ? (
         <div className="popover pop-share">
           <button type="button" onClick={() => window.print()}>
@@ -1496,7 +1615,7 @@ export function App() {
             onClick={() =>
               download(
                 `${safeFileName(song.title)}.html`,
-                toHtml([song], { scheme }),
+                toHtml([song]),
                 'text/html',
               )
             }
@@ -1510,7 +1629,7 @@ export function App() {
                 `${safeFileName(sourceName)}.html`,
                 toHtml(
                   listed.map((e) => e.song),
-                  { name: sourceName, scheme },
+                  { name: sourceName },
                 ),
                 'text/html',
               )

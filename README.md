@@ -18,8 +18,10 @@ npm run typecheck                           # or: run check
 npm run sounds:fetch                        # recorded instruments, optional
 ```
 
-Drop an iReal Pro `.html` or `.txt` export anywhere in the window. An empty library
-seeds itself once, so there is something to read immediately.
+Drop an iReal Pro `.html` or `.txt` export anywhere in the window. For an
+`irealb://` link from the forum, press Ctrl+V anywhere outside a text box, or paste
+it into the Import menu; a post holding several links imports them all. An empty
+library seeds itself once, so there is something to read immediately.
 
 `run.cmd` is the Windows front door — also `run build`, `run fixtures`,
 `run chart <file> [title]`, `run shot`, `run audio [groove]`, `run icons`.
@@ -32,8 +34,10 @@ seeds itself once, so there is something to read immediately.
   centred. A wider window gets more margin, not a wider sheet.
 - **Plays it** — 19 grooves, walking bass, phrased comping with voice-led rootless
   voicings, drums. Repeats, endings, D.C./D.S., Coda and Fine unroll into play order.
-- **Lets you change it** — cell-grid editor with undo and live validation. Key,
-  tempo, style and repeats are remembered per song.
+- **Lets you change it** — cell-grid editor with undo and live validation.
+  Rename a chart; Shift- or Ctrl-click to pick several cells, then copy, cut,
+  paste (into another chart too), clear or delete them. Key, tempo, style and
+  repeats are remembered per song.
 - **Shows you what to play** — `Aa` → *Chord tones to solo on* draws the notes
   under every chord: the third and seventh marked as the ones that spell the
   change, tones the next chord also holds boxed as somewhere to sit, and tones
@@ -54,7 +58,7 @@ seeds itself once, so there is something to read immediately.
 | `docs/ireal-format.md` | The format spec. Read before touching `ireal-format` |
 | `PLAN.md` | Original plan: scope, architecture, risks |
 
-~11,700 lines of TypeScript, 469 tests.
+~12,800 lines of TypeScript, 515 tests.
 
 ## Verified, not asserted
 
